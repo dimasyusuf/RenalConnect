@@ -1,0 +1,24 @@
+RenalConnect
+
+RenalConnect is a clinical management tool developed in British Columbia to improve quality of care and patient outcome in peritoneal dialysis.
+
+Copyright © 2012 Dimas Yusuf and Daniel Schwartz.
+Correspondence: dimas.yusuf@alumni.ubc.ca.
+
+TERMS OF USE
+This program is free software: you can redistribute it or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 3 of the License, or any later version. This program is distributed in the hope that it will be useful, but without any warranty—without even the implied warranty of merchantability or fitness for a particular purpose. See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with this program. If not, see http://www.gnu.org/licenses/gpl.html.
+
+SYSTEM REQUIREMENTS
+•	MySQL server
+•	MySQL client
+•	PHP
+•	Perl with Crypt::Blowfish, CGI::Session, CGI, DBI, and DBD::MySQL
+•	Apache or other web server
+•	We highly recommend that you use .htaccess or some other method to enforce SSL connectivity, and ensure that the server is secure
+
+INSTALLATION INSTRUCTIONS
+1.	Place the contents of the “htdocs” folder into the top level of your “htdocs”
+2.	Place the contents of the “cgi-bin” folder into the top level of your “cgi-bin”
+3.	Run database/renalconnect_schema.sql to generate the database tables
+4.	Open file cgi-bin/lib/ptms/io.pm and modify the “local_settings” at the top to suite your particular installation environment
+5.	Access your new installation via a web browser (i.e. if you installed it at myrenalconnect.com, navigate to http://www.myrenalconnect.com/ or https://www.myrenalconnect.com/ if you have SSL enabled) and sign in as administrator@renalconnect.com with no password. Immediately change your password and administrator email account by clicking on “Account settings” on the top right corner of the screen
