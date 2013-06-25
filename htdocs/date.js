@@ -80,7 +80,7 @@ function refreshDatePicker(dateFieldName, year, month, day) {
   // are required (if a day is passed, it will be highlighted later)
   var thisDay = new Date();
  
-  if ((month >= 0) && (year > 0)) {
+  if ((month >= 0) & (year > 0)) {
     thisDay = new Date(year, month, 1);
   } else {
     day = thisDay.getDate();
@@ -262,16 +262,20 @@ function updateDateField(dateFieldName, dateString) {
     targetDateField.value = dateString;
  
   var pickerDiv = document.getElementById(datePickerDivID);
-  pickerDiv.style.visibility = "hidden";
-  pickerDiv.style.display = "none";
+  if (pickerDiv) {
+  	pickerDiv.style.visibility = "hidden";
+  	pickerDiv.style.display = "none";
+  }
  
   adjustiFrame();
-  targetDateField.focus();
+  if (targetDateField) {
+  	targetDateField.focus();
+  }
  
   // after the datepicker has closed, optionally run a user-defined function called
   // datePickerClosed, passing the field that was just updated as a parameter
   // (note that this will only run if the user actually selected a date from the datepicker)
-  if ((dateString) && (typeof(datePickerClosed) == "function"))
+  if ((dateString) & (typeof(datePickerClosed) == "function"))
     datePickerClosed(targetDateField);
 }
 function adjustiFrame(pickerDiv, iFrameDiv) {

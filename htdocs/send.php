@@ -1,7 +1,7 @@
 <?php
 	#PLEASE PROVIDE YOUR EMAIL SENDER KEY BELOW, WHICH WILL UNLOCK THE SEND CAPABILITY
 	#THIS SHOULD BE THE SAME AS YOUR email_sender_key VARIABLE IN io.pm
-	$correct_key = "d34cb047bb9757b2eb69128c1ed36013";
+	$correct_key = ""; # CHANGE WITH CORRECT KEY
 
 	$to = $_REQUEST["to"];
 	$from = $_REQUEST["from"];

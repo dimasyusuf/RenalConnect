@@ -1,29 +1,29 @@
 #!/usr/bin/perl
 
 use lib "lib";
-use ptms::io;
+use rc::io;
 use strict;
 
 my $payload;
-my @sid = &ptms::io::get_sid();
-my %p = &ptms::io::params();
-%p = &ptms::io::check_expire(\%p);
-my %local_settings = &ptms::io::get_local_settings();
+my @sid = &rc::io::get_sid();
+my %p = &rc::io::params();
+%p = &rc::io::check_expire(\%p);
+my %local_settings = &rc::io::get_local_settings();
 
-if ($p{"do"} eq "logout") {
-	my $uid = &ptms::io::logout(\%p);
-	my $get = &ptms::io::viewer(\%p);
+if ($p{'do'} eq "logout") {
+	my $uid = &rc::io::logout(\%p);
+	my $get = &rc::io::viewer(\%p);
 	$payload = qq{
 		<body onload="ajax('div_main','transfer');">
 			<div id="transfer">$get</div>
 		</body>};
 } else {
 	my $view_alerts;
-	if ($sid[2] ne "") {
-		$view_alerts = &ptms::io::get_alerts(\%p);
+	if ($sid[2] ne '') {
+		$view_alerts = &rc::io::get_alerts(\%p);
 	}
 	$payload = qq{
-		<body onload="ajax_page('alerts','alerts');">
+		<body onload="ajax('alerts','alerts');">
 			<div id="alerts">$view_alerts</div>
 		</body>};
 }

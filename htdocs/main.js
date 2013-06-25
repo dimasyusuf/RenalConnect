@@ -1,8 +1,107 @@
+show_alerts = function() {
+	if (document.getElementById("alerts")) {
+		document.getElementById("alerts").className = "show";
+		document.getElementById("alerts_hidden").className = "hide";
+	}
+}
+hide_alerts = function() {
+	if (document.getElementById("alerts")) {
+		document.getElementById("alerts").className = "hide";
+		document.getElementById("alerts_hidden").className = "show";
+	}
+}
+manage_list_followup = function() {
+	var follow_up_selection = get_selected_value("form_list_flag_for_follow_up");
+	var month_array = follow_up_selection.split(" ");
+	var month = month_array[0];
+	var target_date = document.getElementById("form_list_flag_for_follow_up_date_"+month).innerHTML;
+	document.getElementById("form_list_flag_for_follow_up_date").value = target_date;
+}
+manage_list = function() {
+
+	// DISABLE MODALITY AT 6 AND 12 MONTHS
+	
+	var six = document.getElementById("form_list_modality_at_six_months_enable").innerHTML;
+	var twelve = document.getElementById("form_list_modality_at_twelve_months_enable").innerHTML;
+	if (six == 1) {
+		document.getElementById("form_list_modality_at_six_months").disabled = false;
+	} else {
+		document.getElementById("form_list_modality_at_six_months").disabled = true;
+	}
+	if (twelve == 1) {
+		document.getElementById("form_list_modality_at_twelve_months").disabled = false;
+	} else {
+		document.getElementById("form_list_modality_at_twelve_months").disabled = true;
+	}
+
+	// HIDE EVERYTHING FIRST
+
+	document.getElementById("form_list_tn_chosen_modality_other_box").className = "hide";
+	document.getElementById("form_list_incentre_reason_other_box").className = "hide";
+	document.getElementById("form_list_kcc").className = "hide";
+	document.getElementById("form_list_cvc").className = "hide";
+	document.getElementById("form_list_incentrehd").className = "hide";
+	document.getElementById("form_list_hhd").className = "hide";
+	document.getElementById("form_list_pd").className = "hide";
+	document.getElementById("form_list_transplant").className = "hide";
+	document.getElementById("form_list_preemptive_transplant").className = "hide";
+
+	// SELECTIVELY REVEAL INFORMATION
+
+	if (get_selected_value("form_list_completed") == "Yes") {
+		document.getElementById("form_list_tn_discharge_date").value = document.getElementById("form_list_tn_discharge_date_default").innerHTML;
+	}
+	if (get_selected_value("form_list_interested_in_transplant") == "Yes") {
+		document.getElementById("form_list_transplant").className = "show";
+	}
+	if (get_selected_value("form_list_tn_chosen_modality") == "Other") {
+		document.getElementById("form_list_tn_chosen_modality_other_box").className = "show";
+	}
+	if (get_selected_value("form_list_incentre_reason") == "Other") {
+		document.getElementById("form_list_incentre_reason_other_box").className = "show";
+	}
+	if (get_selected_value("form_list_prior_status") == "Kidney Care Centre") {
+		document.getElementById("form_list_kcc").className = "show";
+	}
+	if ((get_selected_value("form_list_vascular_access_at_hd_start") == "Central venous catheter (CVC)") || 
+		(get_selected_value("form_list_vascular_access_at_hd_start") == "CVC with AVF or AVG")) {
+		if ((get_selected_value("form_list_tn_chosen_modality") != "Peritoneal dialysis") &&
+			(get_selected_value("form_list_tn_chosen_modality") != "Conservative (no dialysis)") &&
+			(get_selected_value("form_list_tn_chosen_modality") != "No choice made") &&
+			(get_selected_value("form_list_tn_chosen_modality") != "Other")) {
+			
+			// ONLY SHOW CVC OPTIONS IF THE PATIENT HAS CVC AND NOT ON PERITONEAL DIALYSIS OR CONSERVATIVE TREATMENT
+			
+			document.getElementById("form_list_cvc").className = "show";
+		}
+	}
+	if ((get_selected_value("form_list_prior_status") == "Kidney Care Centre") || 
+		(get_selected_value("form_list_prior_status") == "Peritoneal dialysis") || 
+		(get_selected_value("form_list_prior_status") == "Physician office")) {
+		document.getElementById("form_list_preemptive_transplant").className = "show";
+	}
+	if ((get_selected_value("form_list_tn_chosen_modality") == "In-centre hemodialysis") ||
+		(get_selected_value("form_list_tn_chosen_modality") == "Nocturnal in-centre hemodialysis") ||
+		(get_selected_value("form_list_tn_chosen_modality") == "Community hemodialysis")) {
+		document.getElementById("form_list_incentrehd").className = "show";
+	} else if (get_selected_value("form_list_tn_chosen_modality") == "Home hemodialysis") {
+		document.getElementById("form_list_hhd").className = "show";
+	} else if (get_selected_value("form_list_tn_chosen_modality") == "Peritoneal dialysis") {
+		document.getElementById("form_list_pd").className = "show";
+	} else if (get_selected_value("form_list_tn_chosen_modality") == "Transplant") {
+		document.getElementById("form_list_transplant").className = "show";
+	}
+}
 tt = function(root,active,total) {
 	for (var i=0; i<=total; i++) {
 		document.getElementById(root+i).className = "tab tabOff b";
 	}
 	document.getElementById(root+active).className = "tab tabAct b";
+	if (active < 5) {
+		show_alerts();
+	} else {
+		hide_alerts();
+	}
 	clear_date_picker();
 }
 ajax = function(t_div,s_div) {
@@ -16,25 +115,6 @@ ajax = function(t_div,s_div) {
 	}
 	if (t_obj && s_obj) {
 		t_obj.innerHTML = s_obj.innerHTML;
-	} else {
-		document.body.innerHTML = "";
-		// alert("Error: target or source not found.");
-	}
-}
-ajax_page = function(t_div,s_div) {
-	var t_obj;
-	var s_obj;
-	if (parent.document.getElementById(t_div)) {
-		t_obj = parent.document.getElementById(t_div);
-	}
-	if (document.getElementById(s_div)) {
-		s_obj = document.getElementById(s_div);
-	}
-	if (t_obj && s_obj) {
-		t_obj.innerHTML = s_obj.innerHTML;
-	} else {
-		document.body.innerHTML = "";
-		// alert("Error: target or source not found.");
 	}
 }
 ajax_input = function(t_div,s_div) {
@@ -48,9 +128,6 @@ ajax_input = function(t_div,s_div) {
 	}
 	if (t_obj && s_obj) {
 		t_obj.value = s_obj.innerHTML;
-	} else {
-		// document.body.innerHTML = "";
-		// alert("Error: target or source not found.");
 	}
 }
 ajax_pop_up = function(t_div,s_div) {
@@ -65,9 +142,6 @@ ajax_pop_up = function(t_div,s_div) {
 	if (t_obj && s_obj) {
 		pop_up_show();
 		t_obj.innerHTML = s_obj.innerHTML;
-	} else {
-		document.body.innerHTML = "";
-		// alert("Error: target or source not found.");
 	}
 }
 pop_up_show = function() {
@@ -176,8 +250,7 @@ function set_duration() {
 	var duration = get_selected_value("form_abx_regimen_duration");
 	var token = document.getElementById("form_abx_regimen_token").innerHTML;
 	var start = document.getElementById("form_abx_date_start").value;
-	var ref = document.getElementById("form_abx_regimen_ref").innerHTML;
-	var url = "ajax.pl?token="+token+"&ref="+ref+"&do=set_duration&start="+start+"&duration="+duration;
+	var url = "ajax.pl?token="+token+"&do=set_duration&start="+start+"&duration="+duration;
 	document.getElementById("hbin").src = url;
 }
 function set_hospitalization() {
@@ -225,6 +298,8 @@ function set_antibiotics() {
 			set_antibiotics_preset("Ceftazidime", "2", "2", "500", "no", "g", "QD", "IP", "14", "");
 		} else if (abx == "Ceftriaxone") {
 			set_antibiotics_preset("Ceftriaxone", "1", "1", "1", "no", "g", "QD", "PO", "14", "");
+		} else if (abx == "Cephalexin") {
+			set_antibiotics_preset("Cephalexin", "500", "500", "500", "no", "mg", "BID", "PO", "14", "");
 		} else if (abx == "Ciprofloxacin") {
 			set_antibiotics_preset("Ciprofloxacin", "500", "500", "250", "no", "mg", "QD", "PO", "14", "");
 		} else if (abx == "Fluconazole") {
@@ -279,8 +354,10 @@ move_to = function(sourceObj,destObj) {
 	}
 }
 show_def = function() {
-	move_to("def","form_case_case_type");
-	document.getElementById("def").className = "show";
+	if (document.getElementById("form_case_case_type")) {
+		move_to("def","form_case_case_type");
+		document.getElementById("def").className = "show";
+	}
 }
 hide_def = function() {
 	document.getElementById("def").className = "hide";
@@ -289,19 +366,19 @@ init_new_case_ajax = function() {
 	document.getElementById("new_case_no_ajax").className = "hide";
 	document.getElementById("new_case_ajax").className = "show";
 }
-refresh_new_case_ajax = function(search_value_string) {
-	var token = document.getElementById("form_case_patient_selector_token").innerHTML;
-	var prev = document.getElementById("form_case_patient_selector_prev").innerHTML;
-	var ref = document.getElementById("form_case_patient_selector_ref").innerHTML;
+refresh_patient_selector_ajax = function(search_value_string) {
+	var token = document.getElementById("form_patient_selector_token").innerHTML;
+	var mode = document.getElementById("form_patient_selector_mode").innerHTML;
+	var prev = document.getElementById("form_patient_selector_prev").innerHTML;
 	if (search_value_string == "" || search_value_string.length < 2) {
-		document.getElementById("form_case_patient_selector").innerHTML = "";
+		document.getElementById("form_patient_selector").innerHTML = "";
 	} else {
 		if (prev != search_value_string) {
-			document.getElementById("form_case_patient_selector").innerHTML = document.getElementById("form_case_patient_selector_searching").innerHTML;
-			var url = "ajax.pl?token="+token+"&ref="+ref+"&do=add_case_select_patient&add_case_select_patient_query="+search_value_string;
+			document.getElementById("form_patient_selector").innerHTML = document.getElementById("form_patient_selector_searching").innerHTML;
+			var url = "ajax.pl?token="+token+"&add_select_patient_mode="+mode+"&do=add_select_patient&add_select_patient_query="+search_value_string;
 			document.getElementById("hbin").src = url;
 		}
-		document.getElementById("form_case_patient_selector_prev").innerHTML = search_value_string;
+		document.getElementById("form_patient_selector_prev").innerHTML = search_value_string;
 	}
 }
 dismiss_provide_reason = function(alert_id) {

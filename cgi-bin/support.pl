@@ -1,23 +1,23 @@
 #!/usr/bin/perl
 
 use lib "lib";
-use ptms::io;
+use rc::io;
 use strict;
 
-my $q = &ptms::io::get_q();
-my @sid = &ptms::io::get_sid();
+my $q = &rc::io::get_q();
+my @sid = &rc::io::get_sid();
 my $token = $sid[1];
-my %p = &ptms::io::params();
-my %local_settings = &ptms::io::get_local_settings();
+my %p = &rc::io::params();
+my %local_settings = &rc::io::get_local_settings();
 
-my $header = &ptms::io::header("Get Technical Support");
-my $footer = &ptms::io::footer();
-my $iframe = &ptms::io::iframe();
-my $htdocs = &ptms::io::get_path_htdocs();
-my $domain = &ptms::io::get_http_domain();
+my $header = &rc::io::header("Get Technical Support");
+my $footer = &rc::io::footer();
+my $iframe = &rc::io::iframe();
+my $htdocs = $local_settings{"path_htdocs"};
+my $domain = $local_settings{"http_domain"};
 my $msgs;
 
-@sid = &ptms::io::get_sid();
+@sid = &rc::io::get_sid();
 
 my $form = qq{
 	<table>
@@ -27,7 +27,7 @@ my $form = qq{
 				<td class="tl p10lo"><div class="itt w250"><input type="text" class="itt" name="param_email" value="$p{'param_email'}"/></div></td>
 			</tr><tr>
 				<td class="tr gt w60">Message</td>
-				<td class="tl p10lo"><div class="itt w250"><textarea class="itt" name="param_message" rows="5"/>$p{"param_message"}</textarea></div></td>
+				<td class="tl p10lo"><div class="itt w250"><textarea class="itt" name="param_message" rows="5"/>$p{'param_message'}</textarea></div></td>
 			</tr><tr>
 				<td class="tl gt w60">&nbsp;</td>
 				<td class="tl p10lo p10to p10bo"><input type="submit" value="Submit"/></td>
@@ -35,17 +35,17 @@ my $form = qq{
 		</tbody>
 	</table>};
 
-if ($p{"do"} eq "get_support") {
-	if ($p{"param_email"} ne "" and $p{"param_message"} ne "") {
+if ($p{'do'} eq "get_support") {
+	if ($p{"param_email"} ne '' and $p{'param_message'} ne '') {
 		my %mail = (
 			"to" => $local_settings{"email_support_to"},
-			"from" => $local_settings{"email_sender_from"};
+			"from" => $local_settings{"email_sender_from"},
 			"cc" => $p{"param_email"},
 			"bcc" => $local_settings{"email_support_bcc"},
 			"subject" => "Request for Technical Assistance",
-			"body" => qq{Hello,\n\nA request for technical assistance was sent from your RenalConnect application on behalf of $p{"param_email"}:\n\n(start of message)\n\n$p{"param_message"}\n\n(end of message)\n\nBest regards,\nYour RenalConnect Team\n}
+			"body" => qq{Hello,\n\nA request for technical assistance was sent from your RenalConnect application on behalf of $p{"param_email"}:\n\n(start of message)\n\n$p{'param_message'}\n\n(end of message)}
 		);
-		my $reply = &ptms::io::mailer(\%mail);
+		my $reply = &rc::io::mailer(\%mail);
 		$msgs = qq{<div class="suc"><span class="b">Your request for assistance has been sent on behalf of &quot;$p{'param_email'}&quot;.</span> Please check this email account in the next few minutes for a confirmation. If you do not receive the email in the next hour, please check your junk mail folder, or contact your peritoneal dialysis team leader for further assistance.</div><div><a href="index.pl" class="b">&laquo; return to sign in screen</a> | <a href="support.pl">submit another support request</a></div>};
 		$form = qq{};
 	} else {
