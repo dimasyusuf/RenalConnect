@@ -1,13 +1,13 @@
 # ************************************************************
 # Sequel Pro SQL dump
-# Version 4096
+# Version 4135
 #
 # http://www.sequelpro.com/
 # http://code.google.com/p/sequel-pro/
 #
-# Host: localhost (MySQL 5.5.28)
+# Host: localhost (MySQL 5.6.25)
 # Database: renalconnect
-# Generation Time: 2013-06-25 20:45:28 +0000
+# Generation Time: 2015-06-18 23:33:37 +0000
 # ************************************************************
 
 
@@ -183,7 +183,7 @@ CREATE TABLE `rc__hs_lists` (
   `candidate_for_home` char(3) DEFAULT NULL,
   `tn_chosen_modality` varchar(64) DEFAULT NULL,
   `tn_chosen_modality_other` tinytext,
-  `interested_in_transplant` char(3) DEFAULT NULL,
+  `interested_in_transplant` varchar(64) DEFAULT NULL,
   `incentre_reason` tinytext,
   `incentre_reason_other` tinytext,
   `homehd_hhd_referral_date` date DEFAULT NULL,
@@ -206,6 +206,8 @@ CREATE TABLE `rc__hs_lists` (
   `comments` text,
   `created` timestamp NULL DEFAULT NULL,
   `modified` datetime DEFAULT NULL,
+  `status_at_initial_meeting` varchar(32) DEFAULT NULL,
+  `recovered_from_dialysis_dependance` char(3) DEFAULT NULL,
   PRIMARY KEY (`hs_entry`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -297,6 +299,7 @@ CREATE TABLE `rc__hs_users` (
   `created` datetime DEFAULT NULL,
   `modified` datetime DEFAULT NULL,
   `accessed` datetime DEFAULT NULL,
+  `home_centre` tinytext,
   PRIMARY KEY (`hs_entry`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -314,6 +317,7 @@ CREATE TABLE `rc_alerts` (
   `lid` int(16) DEFAULT NULL,
   `tid` int(16) DEFAULT NULL,
   `show_after` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `sid` int(16) DEFAULT NULL,
   PRIMARY KEY (`entry`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -335,6 +339,7 @@ CREATE TABLE `rc_alerts_archive` (
   `archive_uid` int(16) DEFAULT NULL,
   `archive_comment` text,
   `archive_date` datetime DEFAULT NULL,
+  `sid` int(16) DEFAULT NULL,
   PRIMARY KEY (`entry`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -489,7 +494,7 @@ CREATE TABLE `rc_lists` (
   `candidate_for_home` char(3) DEFAULT NULL,
   `tn_chosen_modality` varchar(64) DEFAULT NULL,
   `tn_chosen_modality_other` tinytext,
-  `interested_in_transplant` char(3) DEFAULT NULL,
+  `interested_in_transplant` varchar(64) DEFAULT NULL,
   `incentre_reason` tinytext,
   `incentre_reason_other` tinytext,
   `homehd_hhd_referral_date` date DEFAULT NULL,
@@ -512,6 +517,8 @@ CREATE TABLE `rc_lists` (
   `comments` text,
   `created` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `modified` datetime DEFAULT NULL,
+  `status_at_initial_meeting` varchar(32) DEFAULT NULL,
+  `recovered_from_dialysis_dependance` char(3) DEFAULT NULL,
   PRIMARY KEY (`entry`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -602,6 +609,7 @@ CREATE TABLE `rc_users` (
   `created` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `modified` datetime DEFAULT NULL,
   `accessed` datetime DEFAULT NULL,
+  `home_centre` tinytext,
   PRIMARY KEY (`entry`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 

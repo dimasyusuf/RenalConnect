@@ -8,6 +8,7 @@ my $q = &rc::io::get_q();
 my @sid = &rc::io::get_sid();
 my $token = $sid[1];
 my %p = &rc::io::params();
+my %w = &rc::io::get_w();
 my %local_settings = &rc::io::get_local_settings();
 
 my $header = &rc::io::header("Get Technical Support");
@@ -23,14 +24,14 @@ my $form = qq{
 	<table>
 		<tbody>
 			<tr>
-				<td class="tr gt w60">Email</td>
+				<td class="tr gt w60">$w{'Email_uc'}</td>
 				<td class="tl p10lo"><div class="itt w250"><input type="text" class="itt" name="param_email" value="$p{'param_email'}"/></div></td>
 			</tr><tr>
-				<td class="tr gt w60">Message</td>
+				<td class="tr gt w60">$w{'Message'}</td>
 				<td class="tl p10lo"><div class="itt w250"><textarea class="itt" name="param_message" rows="5"/>$p{'param_message'}</textarea></div></td>
 			</tr><tr>
 				<td class="tl gt w60">&nbsp;</td>
-				<td class="tl p10lo p10to p10bo"><input type="submit" value="Submit"/></td>
+				<td class="tl p10lo p10to p10bo"><input type="submit" value="$w{'Submit'}"/></td>
 			</tr>
 		</tbody>
 	</table>};
@@ -42,14 +43,14 @@ if ($p{'do'} eq "get_support") {
 			"from" => $local_settings{"email_sender_from"},
 			"cc" => $p{"param_email"},
 			"bcc" => $local_settings{"email_support_bcc"},
-			"subject" => "Request for Technical Assistance",
-			"body" => qq{Hello,\n\nA request for technical assistance was sent from your RenalConnect application on behalf of $p{"param_email"}:\n\n(start of message)\n\n$p{'param_message'}\n\n(end of message)}
+			"subject" => $w{'Request for Technical Assistance'},
+			"body" => qq{$w{'w_request_letter_part_1'} $p{"param_email"}:\n\n$w{'w_request_letter_part_2'}\n\n$p{'param_message'}\n\n$w{'w_request_letter_part_3'}}
 		);
 		my $reply = &rc::io::mailer(\%mail);
-		$msgs = qq{<div class="suc"><span class="b">Your request for assistance has been sent on behalf of &quot;$p{'param_email'}&quot;.</span> Please check this email account in the next few minutes for a confirmation. If you do not receive the email in the next hour, please check your junk mail folder, or contact your peritoneal dialysis team leader for further assistance.</div><div><a href="index.pl" class="b">&laquo; return to sign in screen</a> | <a href="support.pl">submit another support request</a></div>};
+		$msgs = $w{'w_request_confirmed'};
 		$form = qq{};
 	} else {
-		$msgs = qq{<div class="emp"><span class="b">Please complete all fields and try again.</span></div>};
+		$msgs = qq{<div class="emp">$w{'w_error_information_cant_be_saved'}</div>};
 	}
 }
 print $sid[0] . $header . qq{
@@ -63,11 +64,11 @@ print $sid[0] . $header . qq{
 							<form name="form_login" action="support.pl" method="post" accept-charset="utf-8">
 								<input type="hidden" name="do" value="get_support"/>
 								<input type="hidden" name="token" value="$token"/>
-								<div class="p10 gt">If you are experiencing technical difficulties using the system, or if you believe you have come across a software malfunction, please fill out and submit the form below to notify your RenalConnect team, who will be able to assist you promptly. Please provide a call-back telephone number in the message if possible.</div>
+								<div class="p10 gt">$w{'w_request_blurb'}</div>
 								<div class="p10bo">$msgs</div>
 								$form
 							</form>
-							<a href="index.pl" class="b">&laquo; return to sign in screen</a>
+							<a href="index.pl" class="b">&laquo; $w{'return to sign in screen'}</a>
 						</div>
 					</div>
 				</div>

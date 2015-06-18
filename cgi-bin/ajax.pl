@@ -6,6 +6,7 @@ use strict;
 
 my $q = &rc::io::get_q();
 my @sid = &rc::io::get_sid();
+my %w = &rc::io::get_w();
 my %local_settings = &rc::io::get_local_settings();
 
 my ($output_main,
@@ -24,10 +25,6 @@ my $close_button = &rc::io::close_button();
 my $ok = &rc::io::auth();
 my $token = $ok;
 
-
-
-
-
 # ======================================
 # PROCESS OVERRIDING OR SPECIAL REQUESTS
 # ======================================
@@ -38,6 +35,26 @@ if ($p{'do'} eq "login") {
 } elsif ($p{'do'} eq "logout") {
 	my $uid = &rc::io::logout(\%p);
 	$output_main = &rc::io::viewer(\%p);
+} elsif ($p{'do'} eq "lock") {
+	if ($sid[2]) {
+		my $text = &rc::io::get_lock_screen(\%p);
+		&rc::io::input(qq{INSERT INTO rc_state (uid, param, value) VALUES ("$sid[2]", "lock", "1") ON DUPLICATE KEY UPDATE value="1"});
+		$output_specialrequest = qq{
+		<div id="transfer">$text</div>
+		<img alt='' 
+			src="$local_settings{"path_htdocs"}/images/img_logo_fh_pddb.png" 
+			onload="lock_screen();"/>};
+	}
+} elsif ($p{'do'} eq "unlock") {
+	my $pass = $p{"param_login_password"};
+	$pass = &rc::io::encrypt($pass);
+	my $uid = &rc::io::fast(qq{SELECT entry FROM rc_users WHERE password="$pass" AND entry="$sid[2]" AND deactivated="0"});
+	if ($uid ne '') {
+		&rc::io::input(qq{INSERT INTO rc_state (uid, param, value) VALUES ("$sid[2]", "lock", "0") ON DUPLICATE KEY UPDATE value="0"});
+		$output_specialrequest = qq{
+		<img alt='' src="$local_settings{"path_htdocs"}/images/img_logo_fh_pddb.png" 
+			onload="unlock_screen();"/>};
+	}
 } elsif ($p{'do'} eq "create_administrator") {
 	$p{"param_admin_email"} =~ s/ //g;
 	my $fnam = $p{"param_admin_name_first"};
@@ -54,11 +71,11 @@ if ($p{'do'} eq "login") {
 		($pass eq '') or
 		($pass ne $repe) or
 		($ekey ne $ckey)) {
-			$p{'message_error'} = qq{<span class="b">The administrator user cannot be created</span> Please try again or contact technical support for assistance.};
+			$p{'message_error'} = qq{<span class="b">$w{'The administrator user cannot be created'}</span> $w{'Please try again or contact technical support for assistance.'}};
 	}
 	if ($p{'message_error'} eq '') {
 		$pass = &rc::io::encrypt($pass);
-		my $id = &rc::io::input(qq{INSERT INTO rc_users (type, email, password, name_first, name_last, role, modified, accessed) VALUES ("Administrator", "$mail", "$pass", "$fnam", "$lnam", "Other", CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())});
+		my $id = &rc::io::input(qq{INSERT INTO rc_users (type, email, password, name_first, name_last, role, modified, accessed, home_centre) VALUES ("Administrator", "$mail", "$pass", "$fnam", "$lnam", "Other", CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), "")});
 		&rc::io::track("users", $id);
 	}
 	$output_main = &rc::io::viewer(\%p);
@@ -95,15 +112,15 @@ if ($p{'do'} eq "login") {
 			if ($patients_cache_cases > 0) {
 				if ($patients_cache_case_status == 0) {
 					my $patients_case_id = &rc::io::fast(qq{SELECT entry FROM rc_cases WHERE closed="0" AND patient="$patients_entry" LIMIT 1});
-					$link = qq{<div class="sml"><a class="sml b" href="ajax.pl?token=$token&do=edit_case_form&case_id=$patients_case_id" target="hbin">View latest open case</a></div>};
-					$option = qq{$patients_cache_cases case(s) &mdash; <span class="txt-gre b sml">active</span>};
+					$link = qq{<div class="sml"><a class="sml b" href="ajax.pl?token=$token&do=edit_case_form&case_id=$patients_case_id" target="hbin">$w{'View latest open case'}</a></div>};
+					$option = qq{$patients_cache_cases $w{'case(s)'} &mdash; <span class="txt-gre b sml">$w{'active'}</span>};
 				} else {
-					$link = qq{<div class="sml"><a class="sml b" href="ajax.pl?token=$token&do=add_case_form&patient_id=$patients_entry" target="hbin">Create case</a></div>};
-					$option = qq{$patients_cache_cases case(s) &mdash; <span class="txt-red b sml">closed</span>};
+					$link = qq{<div class="sml"><a class="sml b" href="ajax.pl?token=$token&do=add_case_form&patient_id=$patients_entry" target="hbin">$w{'Create case'}</a></div>};
+					$option = qq{$patients_cache_cases $w{'case(s)'} &mdash; <span class="txt-red b sml">$w{'closed'}</span>};
 				}
 			} else {
-				$option = qq{No cases};
-				$link = qq{<div class="sml"><a class="sml b" href="ajax.pl?token=$token&do=add_case_form&patient_id=$patients_entry" target="hbin">Create case</a></div>};
+				$option = $w{'No cases'};
+				$link = qq{<div class="sml"><a class="sml b" href="ajax.pl?token=$token&do=add_case_form&patient_id=$patients_entry" target="hbin">$w{'Create case'}</a></div>};
 			}
 		} else {
 			my $patients_cache_lists = @$p[6];
@@ -111,15 +128,15 @@ if ($p{'do'} eq "login") {
 			if ($patients_cache_lists > 0) {
 				if ($patients_cache_list_status ne "Yes") {
 					my $patients_list_id = &rc::io::fast(qq{SELECT entry FROM rc_lists WHERE (completed <> "Yes" OR completed IS NULL) AND patient="$patients_entry" LIMIT 1});
-					$link = qq{<div class="sml"><a class="sml b" href="ajax.pl?token=$token&do=view_list&list_id=$patients_list_id" target="hbin">View latest open start</a></div>};
-					$option = qq{$patients_cache_lists start(s) &mdash; <span class="txt-gre b sml">active</span>};
+					$link = qq{<div class="sml"><a class="sml b" href="ajax.pl?token=$token&do=view_list&list_id=$patients_list_id" target="hbin">$w{'View latest open start'}</a></div>};
+					$option = qq{$patients_cache_lists start(s) &mdash; <span class="txt-gre b sml">$w{'active'}</span>};
 				} else {
-					$link = qq{<div class="sml"><a class="sml b" href="ajax.pl?token=$token&do=view_list&patient_id=$patients_entry" target="hbin">Create start</a></div>};
-					$option = qq{$patients_cache_lists start(s) &mdash; <span class="txt-red b sml">closed</span>};
+					$link = qq{<div class="sml"><a class="sml b" href="ajax.pl?token=$token&do=view_list&patient_id=$patients_entry" target="hbin">$w{'Create start'}</a></div>};
+					$option = qq{$patients_cache_lists start(s) &mdash; <span class="txt-red b sml">$w{'closed'}</span>};
 				}
 			} else {
 				$option = qq{No starts};
-				$link = qq{<div class="sml"><a class="sml b" href="ajax.pl?token=$token&do=view_list&patient_id=$patients_entry" target="hbin">Create start</a></div>};
+				$link = qq{<div class="sml"><a class="sml b" href="ajax.pl?token=$token&do=view_list&patient_id=$patients_entry" target="hbin">$w{'Create start'}</a></div>};
 			}
 		}
 		$text .= qq{
@@ -127,7 +144,7 @@ if ($p{'do'} eq "login") {
 				<div class="p5to p5ro">
 					<div class="bg-vlg p5">
 						<div class="b he18 oH" id="ncpn_$patients_count"> $patients_name_last, $patients_name_first </div>
-						<div class="sml gt" id="ncpp_$patients_count">PHN $patients_phn </div>
+						<div class="sml gt" id="ncpp_$patients_count">$w{'PHN'} $patients_phn </div>
 						<div class="sml gt">$option</div>
 						$link
 					</div>
@@ -163,7 +180,7 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 			} else {
 				$rl = '';
 			}
-			$p{'message_success'} = qq{<span class="b">$rl $nf $nl ($em) is now an administrator.</span>};
+			$p{'message_success'} = qq{<span class="b">$rl $nf $nl ($em) $w{'is now an administrator'}.</span>};
 		}
 	}
 	$output_popup .= &rc::io::view_manage_users(\%p);
@@ -178,7 +195,7 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 			} else {
 				$rl = '';
 			}
-			$p{'message_success'} = qq{<span class="b">The account for $rl $nf $nl ($em) has been deactivated.</span>};
+			$p{'message_success'} = qq{<span class="b">$w{'The account for'} $rl $nf $nl ($em) $w{'has been deactivated'}.</span>};
 		}
 	}
 	$output_popup .= &rc::io::view_manage_users(\%p);
@@ -193,7 +210,7 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 			} else {
 				$rl = '';
 			}
-			$p{'message_success'} = qq{<span class="b">The account for $rl $nf $nl ($em) has been reactivated.</span>};
+			$p{'message_success'} = qq{<span class="b">$w{'The account for'} $rl $nf $nl ($em) $w{'has been reactivated'}.</span>};
 		}
 	}
 	$output_popup .= &rc::io::view_manage_users(\%p);
@@ -201,32 +218,32 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 	$output_popup .= &rc::io::add_user_form(\%p);
 } elsif ($p{'do'} eq "add_user_save" and $ok) {
 	my $go = 1;
-	my @columns = ("type","email","password","name_first","name_last","role");
+	my @columns = ("type","email","password","name_first","name_last","role", "home_centre");
 	foreach my $column (@columns) {
 		if ($p{"form_new_user_$column"} eq '') {
 			$go = 0;
 		}
 	}
 	if ($go == 0) {
-		$p{'message_error'} = qq{<span class="b">This user cannot be added.</span> Please ensure that all required fields are completed correctly and try again.};
+		$p{'message_error'} = $w{'w_error_cannot_add_user'};
 	} elsif (&rc::io::fast(qq{SELECT entry FROM rc_users WHERE email="$p{'form_new_user_email'}"})) {
-		$p{'message_error'} = qq{<span class="b">A user with the email address $p{'form_new_user_email'} already exists in the database.</span> Please enter a differente email address, ensure that all required fields are completed correctly and try again.};
+		$p{'message_error'} = $w{'w_error_same_email'};
 	} elsif (length($p{"form_new_user_password"}) < 8) {
-		$p{'message_error'} = qq{<span class="b">The password you have selected is too short.</span> Please enter a password that is at least 8 characters in length, ensure that all required fields are completed correctly and try again.};
+		$p{'message_error'} = $w{'w_error_password_too_short'};
 	} else {
 		my $password_encrypted = &rc::io::encrypt($p{"form_new_user_password"});
 		$p{'form_new_user_email'} =~ s/ //g;
-		my $id = &rc::io::input(qq{INSERT INTO rc_users (type, email, password, name_first, name_last, role, opt_in) VALUES ("$p{'form_new_user_type'}", "$p{'form_new_user_email'}", "$password_encrypted", "$p{'form_new_user_name_first'}", "$p{'form_new_user_name_last'}", "$p{'form_new_user_role'}", "$p{'form_new_user_opt_in'}")});
+		my $id = &rc::io::input(qq{INSERT INTO rc_users (type, email, password, name_first, name_last, role, opt_in, home_centre) VALUES ("$p{'form_new_user_type'}", "$p{'form_new_user_email'}", "$password_encrypted", "$p{'form_new_user_name_first'}", "$p{'form_new_user_name_last'}", "$p{'form_new_user_role'}", "$p{'form_new_user_opt_in'}", "$p{'form_new_user_home_centre'}")});
 		if ($id ne '') {
 			&rc::io::track("users", $id);
 			$output_popup .= qq{
-					<div class="suc"><span class="b">New user added.</span> What would you like to do now?</div>
+					<div class="suc">$w{'w_success_user_added'}</div>
 					<div>
-						<a href="ajax.pl?token=$token&do=edit_manage_users_form" class="sab" target="hbin">Manage users</a> 
-						<a class="sab" onclick="pop_up_hide(); clear_date_picker();">Close this box</a>
+						<a href="ajax.pl?token=$token&do=edit_manage_users_form" class="sab" target="hbin">$w{'Manage users_uc'}</a> 
+						<a class="sab" onclick="pop_up_hide(); clear_date_picker();">$w{'Close this box'}</a>
 					</div>};
 		} else {
-			$p{'message_error'} = qq{<span class="b">This user cannot be added.</span> Please ensure that all required fields are completed correctly and try again.};
+			$p{'message_error'} = $w{'w_error_user_complete_all'};
 		}
 	}
 	if ($p{'message_error'} ne '') {
@@ -246,7 +263,7 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 } elsif ($p{'do'} eq "unhide" and $ok) {
 	&rc::io::input(qq{DELETE FROM rc_hide WHERE uid="$sid[2]" AND record_type="$p{'record_type'}"});
 } elsif ($p{'do'} eq "dismiss" and $ok) {
-	&rc::io::input(qq{UPDATE rc_alerts SET show_after=ADDDATE(CURDATE(), '1 0:0:0') WHERE entry="$p{'aid'}"});
+	&rc::io::input(qq{UPDATE rc_alerts SET show_after=ADDDATE(CURDATE(), INTERVAL 1 DAY) WHERE entry="$p{'aid'}"});
 	&rc::io::archive_alert($p{'aid'}, $sid[2], $p{'dismiss_reason'});
 } elsif ($p{'do'} eq "add_patient_form" and $ok) {
 	$output_popup .= &rc::io::view_patient(\%p);
@@ -262,14 +279,14 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 			&rc::io::track("users", $id);
 			&rc::io::cache_rebuild_patient($id);
 			$output_popup .= qq{
-				<div class="suc"><span class="b">Patient information added.</span> What would you like to do now?</div>
+				<div class="suc">$w{'w_success_patient_info_added'}</div>
 				<div>
-					<a href="ajax.pl?token=$token&do=edit_patient_form&amp;patient_id=$id" class="sab" target="hbin">View patient information</a> 
-					<a href="ajax.pl?token=$token&do=add_case_form&amp;patient_id=$id" class="sab" target="hbin">Add a new case for this patient</a>
-					<a class="sab" onclick="pop_up_hide(); clear_date_picker();">Close this box</a>
+					<a href="ajax.pl?token=$token&do=edit_patient_form&amp;patient_id=$id" class="sab" target="hbin">$w{'View patient information'}</a> 
+					<a href="ajax.pl?token=$token&do=add_case_form&amp;patient_id=$id" class="sab" target="hbin">$w{'Add a new case for this patient'}</a>
+					<a class="sab" onclick="pop_up_hide(); clear_date_picker();">$w{'Close this box'}</a>
 				</div>};
 		} else {
-			$p{'message_error'} = qq{<span class="b">This patient's information cannot be added.</span> Please ensure that all required fields are completed correctly and try again.};
+			$p{'message_error'} = $w{'w_alert_cannot_add_patient'};
 		}
 	}
 	if ($p{'message_error'} ne '') {
@@ -289,11 +306,11 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 		&rc::io::cache_rebuild_patient($p{"patient_id"});
 		$output_popup .= qq{
 			<div class="suc">
-				<span class="b">Patient information updated.</span> What would you like to do now?
+				$w{'w_success_patient_info_updated'}
 			</div><div>
-				<a href="ajax.pl?token=$token&do=edit_patient_form&amp;patient_id=$p{"patient_id"}" class="sab" target="hbin">View patient information</a> 
-				<a href="ajax.pl?token=$token&do=add_case_form&amp;patient_id=$p{"patient_id"}" class="sab" target="hbin">Add a new case for this patient</a>
-				<a class="sab" onclick="pop_up_hide();  clear_date_picker();">Close this box</a>
+				<a href="ajax.pl?token=$token&do=edit_patient_form&amp;patient_id=$p{"patient_id"}" class="sab" target="hbin">$w{'View patient information'}</a> 
+				<a href="ajax.pl?token=$token&do=add_case_form&amp;patient_id=$p{"patient_id"}" class="sab" target="hbin">$w{'Add a new case for this patient'}</a>
+				<a class="sab" onclick="pop_up_hide();  clear_date_picker();">$w{'Close this box'}</a>
 			</div>};
 	}
 	if ($p{'message_error'} ne '') {
@@ -303,11 +320,13 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 	$output_popup .= &rc::io::view_list(\%p);
 } elsif ($p{'do'} eq "save_list" and $ok) {
 	my $list_id;
+	my $mrp;
+	my $patient_id;
 	if ($p{"list_id"} eq '') {
 		#SAVE NEW LIST
 		my $columns;
 		my $values;
-		my $patient_id = &rc::io::fast(qq{SELECT entry FROM rc_patients WHERE entry="$p{'patient_id'}" LIMIT 1});
+		$patient_id = &rc::io::fast(qq{SELECT entry FROM rc_patients WHERE entry="$p{'patient_id'}" LIMIT 1});
 		if ($patient_id ne '' and $p{'form_list_home_centre'} ne '') {
 			%p = &rc::io::check_if_list_complete_on_discharge(\%p);
 			$p{"form_list_patient"} = $patient_id;
@@ -323,8 +342,8 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 			$values .= qq{CURRENT_TIMESTAMP()};
 			$list_id = &rc::io::input(qq{INSERT INTO rc_lists ($columns) VALUES ($values)});
 			if ($p{'message_error'} eq '') {
-				$p{'message_success'} = qq{<span class="b">List saved.</span>};
-				my $mrp = &rc::io::fast(qq{SELECT nephrologist FROM rc_patients WHERE entry="$p{'form_list_patient'}" LIMIT 1});
+				$p{'message_success'} = qq{<span class="b">$w{'List saved'}.</span>};
+				$mrp = &rc::io::fast(qq{SELECT nephrologist FROM rc_patients WHERE entry="$p{'form_list_patient'}" LIMIT 1});
 				my ($dr_name_first, $dr_name_last, $dr_email) = &rc::io::query(qq{SELECT name_first, name_last, email FROM rc_users WHERE entry="$mrp"});
 				if ($dr_name_last ne '' and $dr_email ne '') {
 					my %mail = (
@@ -332,8 +351,8 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 						"from" => $local_settings{"email_sender_from"},
 						"cc" => '',
 						"bcc" => '',
-						"subject" => "You have a new patient on RenalConnect",
-						"body" => qq{Dear Dr. $dr_name_last,\n\nYou have a new patient who has started hemodialysis at $p{'form_list_home_centre'} and is followed by a transition nurse.}	);
+						"subject" => $w{'You have a new patient in RenalConnect'},
+						"body" => qq{$w{'Dear'} Dr. $dr_name_last,\n\n$w{'You have a new patient who has started hemodialysis at'} $p{'form_list_home_centre'} $w{'and is followed by a transition nurse'}.}	);
 					&rc::io::mailer(\%mail);
 				}
 			}
@@ -346,7 +365,7 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 		$list_id = &rc::io::fast(qq{SELECT entry FROM rc_lists WHERE entry="$p{'list_id'}" LIMIT 1});
 		if ($list_id ne '' and $p{'form_list_home_centre'} ne '') {
 			my $query;
-			my $patient_id = &rc::io::fast(qq{SELECT patient FROM rc_lists WHERE entry="$list_id" LIMIT 1});
+			$patient_id = &rc::io::fast(qq{SELECT patient FROM rc_lists WHERE entry="$list_id" LIMIT 1});
 			if ($patient_id ne '') {
 				%p = &rc::io::check_if_list_complete_on_discharge(\%p);
 				foreach my $key (keys %p) {
@@ -362,7 +381,7 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 				&rc::io::track("lists", $list_id);
 				&rc::io::cache_rebuild_patient($p{"patient_id"});				
 				if ($p{'message_error'} eq '') {
-					$p{'message_success'} = qq{<span class="b">List saved.</span>};
+					$p{'message_success'} = qq{<span class="b">$w{'List saved'}.</span>};
 				}
 			} else {
 				$p{'message_error'} = 1;
@@ -373,16 +392,64 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 		$p{'message_error'} = 1;
 	}
 	if ($p{'message_error'} eq 1) {
-		$p{'message_error'} = qq{
-			<span class="b">This case cannot be saved.</span> 
-			Please ensure that a home centre is provided and try again.};
+		$p{'message_error'} = $w{'w_error_no_home_center'};
 	} elsif ($p{'message_error'} eq 2) {
-		$p{'message_error'} = qq{
-			<span class="b">This case cannot be signed off.</span> 
-			Please ensure that all required fields, as marked by the red bullets,
-			are completed and try again.};
+		$p{'message_error'} = $w{'w_error_cant_sign_off'};
 	} else {
 		$p{'message_error'} = '';
+				
+		#ADD REMINDERS IF ANY DATES EXIST TO ALL TN NURSES AND MRP
+		my @users = &rc::io::query(qq{SELECT entry FROM rc_users WHERE role="Transition Nurse" AND home_centre="$p{'form_list_home_centre'}"});
+		@users = (@users, $mrp);
+
+		# DELETE OLD REMINDERS WHICH MAY NO LONGER BE VALID
+		&rc::io::input(qq{DELETE FROM rc_alerts WHERE sid="$list_id"});
+		
+		# GET NEW FOLLOW-UP DATES
+		my $completed = &rc::io::fast(qq{SELECT completed FROM rc_lists WHERE entry="$list_id" LIMIT 1});
+		
+		if ($completed ne "Yes") {
+			my $date_follow_up = &rc::io::fast(qq{SELECT flag_for_follow_up_date FROM rc_lists WHERE entry="$list_id" LIMIT 1});
+			my $first_hd_date = &rc::io::fast(qq{SELECT first_hd_date FROM rc_lists WHERE entry="$list_id" LIMIT 1});
+			my $created_date = &rc::io::fast(qq{SELECT created FROM rc_lists WHERE entry="$list_id" LIMIT 1});
+			my $tn_initial_assessment_date = &rc::io::fast(qq{SELECT tn_initial_assessment_date FROM rc_lists WHERE entry="$list_id" LIMIT 1});
+			my $date_modality_6_months;
+			my $date_modality_12_months;
+
+			if ($first_hd_date ne '' and $first_hd_date ne '0000-00-00') {
+				$date_modality_6_months = &rc::io::fast(qq{SELECT DATE_ADD("$first_hd_date", INTERVAL 6 MONTH)});
+				$date_modality_12_months = &rc::io::fast(qq{SELECT DATE_ADD("$first_hd_date", INTERVAL 12 MONTH)});
+			} elsif ($tn_initial_assessment_date ne '' and $tn_initial_assessment_date ne '0000-00-00') {
+				$date_modality_6_months = &rc::io::fast(qq{SELECT DATE_ADD("$tn_initial_assessment_date", INTERVAL 6 MONTH)});
+				$date_modality_12_months = &rc::io::fast(qq{SELECT DATE_ADD("$tn_initial_assessment_date", INTERVAL 12 MONTH)});
+			} else {
+				$date_modality_6_months = &rc::io::fast(qq{SELECT DATE_ADD("$created_date", INTERVAL 6 MONTH)});
+				$date_modality_12_months = &rc::io::fast(qq{SELECT DATE_ADD("$created_date", INTERVAL 12 MONTH)});
+			}
+		
+			my $datediff_follow_up = &rc::io::fast(qq{SELECT DATEDIFF("$date_follow_up", CURDATE())});
+			my $datediff_6_months = &rc::io::fast(qq{SELECT DATEDIFF("$date_modality_6_months", CURDATE())});
+			my $datediff_12_months = &rc::io::fast(qq{SELECT DATEDIFF("$date_modality_12_months", CURDATE())});
+
+			if ($date_follow_up ne '' and $date_follow_up ne '0000-00-00') {
+				foreach my $user (@users) {
+					&rc::io::input(qq{INSERT INTO rc_alerts (alert_type, uid, pid, sid, show_after) 
+					VALUES ("230","$user","$patient_id", "$list_id", "$date_follow_up")});
+				}
+			}
+			if ($date_modality_6_months ne '' and $date_modality_6_months ne '0000-00-00') {
+				foreach my $user (@users) {
+					&rc::io::input(qq{INSERT INTO rc_alerts (alert_type, uid, pid, sid, show_after) 
+					VALUES ("240","$user","$patient_id", "$list_id", "$date_modality_6_months")});
+				}
+			}
+			if ($date_modality_12_months ne '' and $date_modality_12_months ne '0000-00-00') {
+				foreach my $user (@users) {
+					&rc::io::input(qq{INSERT INTO rc_alerts (alert_type, uid, pid, sid, show_after) 
+					VALUES ("250","$user","$patient_id", "$list_id", "$date_modality_12_months")});
+				}
+			}
+		}
 	}
 	$output_popup .= &rc::io::view_list(\%p);
 } elsif ($p{'do'} eq "delete_list" and $ok) {
@@ -391,27 +458,24 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 		if ($p{"confirm_delete"} eq '1') {
 			my $patient_id = &rc::io::fast(qq{SELECT patient FROM rc_lists WHERE entry="$p{'list_id'}"});
 			&rc::io::input(qq{DELETE FROM rc_lists WHERE entry="$p{"list_id"}"});
+			&rc::io::input(qq{DELETE FROM rc_alerts WHERE sid="$p{"list_id"}"});
 			&rc::io::cache_rebuild_patient($patient_id);
 			$output_popup .= qq{
 				$close_button
 				<div class="suc">
-					<span class="b">This case has been deleted.</span>
+					<span class="b">$w{'This case has been deleted'}.</span>
 					<div class="p10to">
-						<a href="$local_settings{"path_htdocs"}/images/blank.gif" target="hbin" class="b" onclick="pop_up_hide();">Close this box</a>
+						<a href="$local_settings{"path_htdocs"}/images/blank.gif" target="hbin" class="b" onclick="pop_up_hide();">$w{'Close this box'}</a>
 					</div>
 				</div>};
 		} else {
 			$output_popup .= qq{
 				$close_button
 				<div class="emp">
-					<span class="b">Are you sure you want to delete this case?</span> 
-					Cases should not be deleted unless they were created in error. 
-					This action cannot be undone, however, a record of this case will 
-					still be kept in the archive for auditing purposes. If you are 
-					unsure, please contact your group leader before proceeding.
+					$w{'w_confirm_delete_case'}
 					<div class="p10to">
-						<a href="ajax.pl?token=$token&do=delete_list&list_id=$p{"list_id"}&confirm_delete=1" target="hbin">Yes, delete</a> &nbsp; &nbsp; 
-						<a href="ajax.pl?token=$token&do=view_list&list_id=$p{"list_id"}" target="hbin" class="b">No, do not delete this case</a>
+						<a href="ajax.pl?token=$token&do=delete_list&list_id=$p{"list_id"}&confirm_delete=1" target="hbin">$w{'Yes'}, $w{'delete'}</a> &nbsp; &nbsp; 
+						<a href="ajax.pl?token=$token&do=view_list&list_id=$p{"list_id"}" target="hbin" class="b">$w{'No, do not delete'}</a>
 					</div>
 				</div>};
 		}
@@ -434,15 +498,14 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 			&rc::io::track("cases", $id);
 			&rc::io::cache_rebuild_patient($p{"patient_id"});
 			$output_popup .= qq{
-				<div class="suc"><span class="b">Case information added.</span> What would you like to do now?
-				</div><div>
-					<a href="ajax.pl?token=$token&do=edit_case_form&amp;case_id=$id" class="sab" target="hbin">Manage case</a> 
-					<a href="ajax.pl?token=$token&do=add_lab_form&amp;case_id=$id" class="sab" target="hbin">Add culture result</a> 
-					<a href="ajax.pl?token=$token&do=add_antibiotic_form&amp;case_id=$id" class="sab" target="hbin">Add antibiotic therapy</a>
-					<a class="sab" onclick="pop_up_hide(); clear_date_picker();">Close this box</a>
+				<div class="suc">$w{'w_success_case_info_added'}</div><div>
+					<a href="ajax.pl?token=$token&do=edit_case_form&amp;case_id=$id" class="sab" target="hbin">$w{'Manage case_uc'}</a> 
+					<a href="ajax.pl?token=$token&do=add_lab_form&amp;case_id=$id" class="sab" target="hbin">$w{'Add culture result'}</a> 
+					<a href="ajax.pl?token=$token&do=add_antibiotic_form&amp;case_id=$id" class="sab" target="hbin">$w{'Add antibiotic treatment'}</a>
+					<a class="sab" onclick="pop_up_hide(); clear_date_picker();">$w{'Close this box'}</a>
 				</div>};
 		} else {
-			$p{'message_error'} = qq{<span class="b">This case cannot be added.</span> Please ensure that all required fields are completed correctly and try again.};
+			$p{'message_error'} = $w{'w_error_cannot_add_case'};
 		}
 	}
 	if ($p{'message_error'} ne ''){
@@ -467,12 +530,12 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 		&rc::io::cache_rebuild_patient($p{"patient_id"});
 		$output_popup .= qq{
 			<div class="suc">
-				<span class="b">Case information updated.</span> What would you like to do now?
+				$w{'w_success_case_info_added'}
 			</div><div>
-				<a href="ajax.pl?token=$token&do=edit_case_form&amp;case_id=$p{"case_id"}" class="sab" target="hbin">Manage case</a> 
-				<a href="ajax.pl?token=$token&do=add_lab_form&amp;case_id=$p{"case_id"}" class="sab" target="hbin">Add culture result</a> 
-				<a href="ajax.pl?token=$token&do=add_antibiotic_form&amp;case_id=$p{"case_id"}" class="sab" target="hbin">Add antibiotic therapy</a>
-				<a class="sab" onclick="pop_up_hide(); clear_date_picker();">Close this box</a>
+				<a href="ajax.pl?token=$token&do=edit_case_form&amp;case_id=$p{"case_id"}" class="sab" target="hbin">$w{'Manage case_uc'}</a> 
+				<a href="ajax.pl?token=$token&do=add_lab_form&amp;case_id=$p{"case_id"}" class="sab" target="hbin">$w{'Add culture result'}</a> 
+				<a href="ajax.pl?token=$token&do=add_antibiotic_form&amp;case_id=$p{"case_id"}" class="sab" target="hbin">$w{'Add antibiotic treatment'}</a>
+				<a class="sab" onclick="pop_up_hide(); clear_date_picker();">$w{'Close this box'}</a>
 			</div>};
 	}
 	if ($p{'message_error'} ne ''){
@@ -681,7 +744,7 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 			$p{"do_reload"} = "add_antibiotic_save";
 			$output_popup .= &rc::io::view_case(\%p);
 		} else {
-			$p{'message_error'} = qq{<span class="b">This antibiotic treatment cannot be added.</span> Please ensure that all required fields are completed correctly and try again.};
+			$p{'message_error'} = $w{'w_error_cannot_add_antibiotic'};
 		}
 	}
 	if ($p{'message_error'} ne '') {
@@ -738,7 +801,7 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 		($p{"form_users_email"} eq '') or 
 		($p{"form_users_role"} eq '' and $executing_user eq "Administrator") or
 		($executing_user ne "Administrator" and $sid[2] ne $p{'uid'})) {
-		$p{'message_error'} = qq{<span class="b">User information cannot be saved.</span> Please complete all required fields and try again. uid is $p{'uid'}, form_users_name_first is $p{"form_users_name_first"}, form_users_name_last is $p{"form_users_name_last"}, form_users_email is $p{"form_users_email"}, form_users_role is $p{"form_users_role"}};
+		$p{'message_error'} = $w{'w_error_cannot_save_user'};
 	}
 	if ($p{'message_error'} eq '') {
 		$p{'form_users_email'} =~ s/ //g;
@@ -746,13 +809,13 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 		if ($p{'form_users_role'} ne '') {
 			$form_users_role_update = qq{role="$p{'form_users_role'}",};
 		}
-		&rc::io::input(qq{UPDATE rc_users SET name_first="$p{"form_users_name_first"}", name_last="$p{"form_users_name_last"}", email="$p{"form_users_email"}", $form_users_role_update opt_in="$p{"form_users_opt_in"}", modified=CURRENT_TIMESTAMP() WHERE entry="$p{'uid'}"});
+		&rc::io::input(qq{UPDATE rc_users SET home_centre="$p{"form_users_home_centre"}", name_first="$p{"form_users_name_first"}", name_last="$p{"form_users_name_last"}", email="$p{"form_users_email"}", $form_users_role_update opt_in="$p{"form_users_opt_in"}", modified=CURRENT_TIMESTAMP() WHERE entry="$p{'uid'}"});
 		&rc::io::track("users", $sid[2]);
 		my @patient_ids = &rc::io::query(qq{SELECT entry FROM rc_patients WHERE primary_nurse="$sid[2]" OR nephrologist="$sid[2]"});
 		foreach my $patient_id (@patient_ids) {
 			&rc::io::cache_rebuild_patient($patient_id);
 		}
-		$p{'message_success'} = qq{<span class="b">User information saved.</span>};
+		$p{'message_success'} = qq{<span class="b">$w{'User information saved'}.</span>};
 	}
 	$output_popup .= &rc::io::view_account_settings(\%p);
 } elsif ($p{'do'} eq "edit_account_settings_save_password" and $ok) {
@@ -761,21 +824,21 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 	my $new_password = $p{"form_users_password"};
 	my $rep_password = $p{"form_users_password_repeat"};
 	if ($new_password eq '') {
-		$p{'message_error'} = qq{<span class="b">Your password cannot be updated.</span> Please ensure that you have entered a new password and try again.};
+		$p{'message_error'} = $w{'w_error_password_cannot_update'};
 	} elsif ($chk_password ne $old_password) {
-		$p{'message_error'} = qq{<span class="b">Your password cannot be updated because your existing password does not match with the password we have on file.</span> Please ensure that you have entered the correct case sensitive existing password and try again.};
+		$p{'message_error'} = $w{'w_error_passwords_dont_match'};
 		&rc::io::record_login($sid[2],"password change failed");
 	} elsif (length($new_password) < 8) {
-		$p{'message_error'} = qq{<span class="b">Your password cannot be updated because your new password is too short.</span> Please ensure that your new password is at least 8 characters in length and try again.};
+		$p{'message_error'} = $w{'w_error_password_too_short'};
 	}  elsif ($new_password ne $rep_password) {
-		$p{'message_error'} = qq{<span class="b">Your password cannot be updated because your new passwords do not match.</span> Please ensure that you have re-entered the same new password twice and try again.};
+		$p{'message_error'} = $w{'w_error_password_repeat_dont_match'};
 	}
 	if ($p{'message_error'} eq '') {
 		$new_password = &rc::io::encrypt($new_password);
 		&rc::io::input(qq{UPDATE rc_users SET password="$new_password" WHERE entry="$sid[2]"});
 		&rc::io::track("users", $sid[2]);
 		&rc::io::record_login($sid[2],"password change successful");
-		$p{'message_success'} = qq{<span class="b">Your password has been updated.</span>};
+		$p{'message_success'} = $w{'w_success_password_updated'};
 	}
 	$output_popup .= &rc::io::view_account_settings(\%p);
 } elsif ($p{'do'} eq "edit_manage_users_form" and $ok) {
@@ -786,16 +849,10 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 		$output_popup .= qq{
 			$close_button
 			<div class="emp">
-				<span class="b">Are you sure you want to delete this case?</span> 
-				Cases should not be deleted unless they were created in error. All 
-				culture results, alerts, and antibiotic treatment information 
-				related to this case will also be deleted. This action cannot be 
-				undone, however, a record of this case will still be kept in the 
-				archive for auditing purposes. If you are unsure, please contact 
-				your group leader before proceeding.
+				$w{'w_confirm_delete_information'}
 				<div class="p10to">
-					<a href="ajax.pl?token=$token&do=delete_case_commit_save&case_id=$p{"case_id"}" target="hbin">Yes, delete</a> &nbsp; &nbsp; 
-					<a href="ajax.pl?token=$token&do=edit_case_form&case_id=$p{"case_id"}" target="hbin" class="b">No, do not delete this case</a>
+					<a href="ajax.pl?token=$token&do=delete_case_commit_save&case_id=$p{"case_id"}" target="hbin">$w{'Yes'}, ${'delete'}</a> &nbsp; &nbsp; 
+					<a href="ajax.pl?token=$token&do=edit_case_form&case_id=$p{"case_id"}" target="hbin" class="b">$w{'No, do not delete'}</a>
 				</div>
 			</div>};
 	}
@@ -822,9 +879,9 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 		$output_popup .= qq{
 			$close_button
 			<div class="suc">
-				<span class="b">This case has been deleted.</span>
+				<span class="b">$w{'This case has been deleted'}.</span>
 				<div class="p10to">
-					<a href="$local_settings{"path_htdocs"}/images/blank.gif" target="hbin" class="b" onclick="pop_up_hide();">Close this box</a>
+					<a href="$local_settings{"path_htdocs"}/images/blank.gif" target="hbin" class="b" onclick="pop_up_hide();">$w{'Close this box'}</a>
 				</div>
 			</div>};
 	}
@@ -834,14 +891,10 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 		$output_popup .= qq{
 			$close_button
 			<div class="emp">
-				<span class="b">Are you sure you want to delete this catheter information?</span> 
-				Catheter information must not be deleted unless they were created in error. This 
-				action cannot be undone. However, a record of this catheter information will 
-				still be kept in the archive for auditing purposes. If you are unsure, please 
-				contact your group leader before proceeding.
+				$w{'w_confirm_delete_information'}
 				<div class="p10to">
-					<a href="ajax.pl?token=$token&do=delete_catheter_commit_save&catheter_id=$p{"catheter_id"}" target="hbin">Yes, delete</a> &nbsp; &nbsp; 
-					<a href="ajax.pl?token=$token&do=edit_catheter_form&catheter_id=$p{"catheter_id"}" target="hbin" class="b">No, do not delete this catheter</a>
+					<a href="ajax.pl?token=$token&do=delete_catheter_commit_save&catheter_id=$p{"catheter_id"}" target="hbin">$w{'Yes'}, ${'delete'}</a> &nbsp; &nbsp; 
+					<a href="ajax.pl?token=$token&do=edit_catheter_form&catheter_id=$p{"catheter_id"}" target="hbin" class="b">$w{'No, do not delete'}</a>
 				</div>
 			</div>};
 	}
@@ -853,8 +906,8 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 		$output_popup .= qq{
 			$close_button
 			<div class="suc">
-				<span class="b">This catheter information has been deleted.</span>
-				<div class="p10to"><a href="$local_settings{"path_htdocs"}/images/blank.gif" target="hbin" class="b" onclick="pop_up_hide();">Close this box</a></div>
+				<span class="b">$w{'This information has been deleted'}.</span>
+				<div class="p10to"><a href="$local_settings{"path_htdocs"}/images/blank.gif" target="hbin" class="b" onclick="pop_up_hide();">$w{'Close this box'}</a></div>
 			</div>};
 	}
 } elsif ($p{'do'} eq "delete_dialysis_confirm" and $ok) {
@@ -862,8 +915,8 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 	if ($p{"dialysis_id"} ne '') {
 		$output_popup .= qq{
 			$close_button
-			<div class="emp"><span class="b">Are you sure you want to delete this dialysis information?</span> Dialysis information must not be deleted unless they were created in error. This action cannot be undone. However, a record of this dialysis information will still be kept in the archive for auditing purposes. If you are unsure, please contact your group leader before proceeding.
-				<div class="p10to"><a href="ajax.pl?token=$token&do=delete_dialysis_commit_save&dialysis_id=$p{"dialysis_id"}" target="hbin">Yes, delete</a> &nbsp; &nbsp; <a href="ajax.pl?token=$token&do=edit_dialysis_form&dialysis_id=$p{"dialysis_id"}" target="hbin" class="b">No, do not delete this dialysis</a></div>
+			<div class="emp">$w{'w_confirm_delete_information'}
+				<div class="p10to"><a href="ajax.pl?token=$token&do=delete_dialysis_commit_save&dialysis_id=$p{"dialysis_id"}" target="hbin">$w{'Yes'}, ${'delete'}</a> &nbsp; &nbsp; <a href="ajax.pl?token=$token&do=edit_dialysis_form&dialysis_id=$p{"dialysis_id"}" target="hbin" class="b">$w{'No, do not delete'}</a></div>
 			</div>};
 	}
 } elsif ($p{'do'} eq "delete_dialysis_commit_save" and $ok) {
@@ -874,8 +927,8 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 		$output_popup .= qq{
 			$close_button
 			<div class="suc">
-				<span class="b">This dialysis information has been deleted.</span>
-				<div class="p10to"><a href="$local_settings{"path_htdocs"}/images/blank.gif" target="hbin" class="b" onclick="pop_up_hide();">Close this box</a></div>
+				<span class="b">$w{'This information has been deleted'}.</span>
+				<div class="p10to"><a href="$local_settings{"path_htdocs"}/images/blank.gif" target="hbin" class="b" onclick="pop_up_hide();">$w{'Close this box'}</a></div>
 			</div>};
 	}
 } elsif ($p{'do'} eq "delete_lab_confirm" and $ok) {
@@ -883,8 +936,8 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 	if ($p{"lab_id"} ne '') {
 		$output_popup .= qq{
 			$close_button
-			<div class="emp"><span class="b">Are you sure you want to delete this culture result?</span> Culture results must not be deleted unless they were created in error. This action cannot be undone. However, a record of this culture result will still be kept in the archive for auditing purposes. If you are unsure, please contact your group leader before proceeding.
-				<div class="p10to"><a href="ajax.pl?token=$token&do=delete_lab_commit_save&lab_id=$p{"lab_id"}" target="hbin">Yes, delete</a> &nbsp; &nbsp; <a href="ajax.pl?token=$token&do=edit_lab_form&lab_id=$p{"lab_id"}" target="hbin" class="b">No, do not delete this culture result</a></div>
+			<div class="emp">$w{'w_confirm_delete_information'}
+				<div class="p10to"><a href="ajax.pl?token=$token&do=delete_lab_commit_save&lab_id=$p{"lab_id"}" target="hbin">$w{'Yes'}, ${'delete'}</a> &nbsp; &nbsp; <a href="ajax.pl?token=$token&do=edit_lab_form&lab_id=$p{"lab_id"}" target="hbin" class="b">$w{'No, do not delete'}</a></div>
 			</div>};
 	}
 } elsif ($p{'do'} eq "delete_lab_commit_save" and $ok) {
@@ -896,8 +949,8 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 		$output_popup .= qq{
 			$close_button
 			<div class="suc">
-				<span class="b">This culture result has been deleted.</span>
-				<div class="p10to"><a href="$local_settings{"path_htdocs"}/images/blank.gif" target="hbin" class="b" onclick="pop_up_hide();">Close this box</a></div>
+				<span class="b">$w{'This information has been deleted'}.</span>
+				<div class="p10to"><a href="$local_settings{"path_htdocs"}/images/blank.gif" target="hbin" class="b" onclick="pop_up_hide();">$w{'Close this box'}</a></div>
 			</div>};
 	}
 } elsif ($p{'do'} eq "delete_abx_confirm" and $ok) {
@@ -905,8 +958,8 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 	if ($p{"abx_id"} ne '') {
 		$output_popup .= qq{
 			$close_button
-			<div class="emp"><span class="b">Are you sure you want to delete this antibiotic treatment?</span> Antibiotic treatments must not be deleted unless they were created in error. This action cannot be undone. However, a record of this antibiotic treatment will still be kept in the archive for auditing purposes. If you are unsure, please contact your group leader before proceeding.
-				<div class="p10to"><a href="ajax.pl?token=$token&do=delete_abx_commit_save&abx_id=$p{"abx_id"}" target="hbin">Yes, delete</a> &nbsp; &nbsp; <a href="ajax.pl?token=$token&do=edit_antibiotic_form&abx_id=$p{"abx_id"}" target="hbin" class="b">No, do not delete this antibiotic treatment</a></div>
+			<div class="emp">$w{'w_confirm_delete_information'}
+				<div class="p10to"><a href="ajax.pl?token=$token&do=delete_abx_commit_save&abx_id=$p{"abx_id"}" target="hbin">$w{'Yes'}, ${'delete'}</a> &nbsp; &nbsp; <a href="ajax.pl?token=$token&do=edit_antibiotic_form&abx_id=$p{"abx_id"}" target="hbin" class="b">$w{'No, do not delete'}</a></div>
 			</div>};
 	}
 } elsif ($p{'do'} eq "delete_abx_commit_save" and $ok) {
@@ -918,8 +971,8 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 		$output_popup .= qq{
 			$close_button
 			<div class="suc">
-				<span class="b">This antibiotic treatment has been deleted.</span>
-				<div class="p10to"><a href="$local_settings{"path_htdocs"}/images/blank.gif" target="hbin" class="b" onclick="pop_up_hide();">Close this box</a></div>
+				<span class="b">$w{'This information has been deleted'}.</span>
+				<div class="p10to"><a href="$local_settings{"path_htdocs"}/images/blank.gif" target="hbin" class="b" onclick="pop_up_hide();">$w{'Close this box'}</a></div>
 			</div>};
 	}
 }
@@ -931,17 +984,17 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 
 sub check_patient_input() {
 	if (($p{"form_patients_name_first"} eq '') or ($p{"form_patients_name_last"} eq '') or ($p{"form_patients_phn"} eq '') or ($p{"form_patients_primary_nurse"} eq '') or ($p{"form_patients_nephrologist"} eq '')) {
-		$p{'message_error'} = qq{<span class="b">This patient's information cannot be saved.</span> Please ensure that all required fields (name, PHN, primary nurse and nephrologist) are completed correctly and try again.};
+		$p{'message_error'} = $w{'w_error_information_cant_be_saved'};
 	} elsif (&rc::io::fast(qq{SELECT entry FROM rc_patients WHERE phn="$p{"form_patients_phn"}" AND entry<>"$p{"patient_id"}" LIMIT 1}) > 0) {
-		$p{'message_error'} = qq{<span class="b">This patient's information could not be saved because another patient with the same PHN number ($p{"form_patients_phn"}) already exists in the database.</span>};
+		$p{'message_error'} = qq{<span class="b">$w{'w_error_patient_phn_already_exists'}</span>};
 	} elsif (&rc::io::is_date_valid($p{"form_patients_date_of_birth"}) eq '' and $p{"form_patients_date_of_birth"} ne '') {
-		$p{'message_error'} = qq{<span class="b">This patient's information cannot be saved because the patient's date of birth appears to be invalid.</span> Please ensure that the date of birth is entered correctly in the format of YYYY-MM-DD and try again.};
+		$p{'message_error'} = qq{<span class="b">$w{'w_error_patient_dob_invalid'}</span> $w{'w_error_date_format'}};
 	} elsif (&rc::io::is_date_valid($p{"form_patients_pd_start_date"}) eq '' and $p{"form_patients_pd_start_date"} ne '') {
-		$p{'message_error'} = qq{<span class="b">This patient's information cannot be saved because the patient's PD start date appears to be invalid.</span> Please ensure that the date is entered correctly in the format of YYYY-MM-DD and try again.};
+		$p{'message_error'} = qq{<span class="b">$w{'w_error_patient_pd_invalid'}</span> $w{'w_error_date_format'}};
 	} elsif (&rc::io::is_date_valid($p{"form_patients_pd_stop_date"}) eq '' and $p{"form_patients_pd_stop_date"} ne '') {
-		$p{'message_error'} = qq{<span class="b">This patient's information cannot be saved because the patient's PD stop date appears to be invalid.</span> Please ensure that the date is entered correctly in the format of YYYY-MM-DD and try again.};
+		$p{'message_error'} = qq{<span class="b">$w{'w_error_patient_pd_stop_invalid'}</span> $w{'w_error_date_format'}};
 	} elsif ($p{"form_patients_pd_start_date"} ne '' and $p{"form_patients_pd_stop_date"} ne '' and &rc::io::fast(qq{SELECT DATEDIFF('$p{"form_patients_pd_stop_date"}', '$p{"form_patients_pd_start_date"}')}) < 0) {
-		$p{'message_error'} = qq{<span class="b">This patient's information cannot be saved because the patient's PD start date occurs after the stop date.</span> Please ensure that the start date occurs before the stop date and try again.};
+		$p{'message_error'} = $w{'w_error_patient_pd_start_stop_invalid'};
 	}
 }
 sub check_case_input() {
@@ -949,28 +1002,28 @@ sub check_case_input() {
 	if ($job_type eq "add") {
 		$p{"patient_id"} = &rc::io::fast(qq{SELECT entry FROM rc_patients WHERE entry="$p{"patient_id"}" LIMIT 1});
 		if ($p{"patient_id"} eq '') {
-			$p{'message_error'} = qq{<span class="b">This case cannot be saved.</span> Please close this window and try again.};
+			$p{'message_error'} = $w{'w_error_information_cant_be_saved'};
 		}
 	} elsif ($job_type eq "edit") {
 		$p{"case_id"} = &rc::io::fast(qq{SELECT entry FROM rc_cases WHERE entry="$p{"case_id"}"});
 		$p{"patient_id"} = &rc::io::fast(qq{SELECT patient FROM rc_cases WHERE entry="$p{"case_id"}"});
 		if ($p{"case_id"} eq '' or $p{"patient_id"} eq '') {
-			$p{'message_error'} = qq{<span class="b">This case cannot be saved.</span> Please close this window and try again.};
+			$p{'message_error'} = $w{'w_error_information_cant_be_saved'};
 		} elsif (&rc::io::is_date_valid($p{"form_case_created"}) eq '') {
-			$p{'message_error'} = qq{<span class="b">This case cannot be saved because the presentation date appears to be invalid.</span> Please provide a valid presentation date in the format of YYYY-MM-DD and try again.};
+			$p{'message_error'} = qq{<span class="b">$w{'w_error_case_presentation_invalid'}</span> $w{'w_error_date_format'}};
 		}
 	}
 	if ($p{"form_case_hospitalization_start_date"} ne '') {
 		if (&rc::io::is_date_valid($p{"form_case_hospitalization_start_date"}) eq '') {
-			$p{'message_error'} = qq{<span class="b">This case cannot be saved because the hospitalization start date appears to be invalid.</span> Please provide a valid start date in the format of YYYY-MM-DD and try again.};
+			$p{'message_error'} = qq{<span class="b">$w{'w_error_case_hospitalization_date_invalid'}</span> $w{'w_error_date_format'}};
 		}
 	} elsif ($p{"form_case_hospitalization_stop_date"} ne '') {
 		if (&rc::io::is_date_valid($p{"form_case_hospitalization_stop_date"}) eq '') {
-			$p{'message_error'} = qq{<span class="b">This case cannot be saved because the hospitalization end date appears to be invalid.</span> Please provide a valid end date in the format of YYYY-MM-DD and try again.};
+			$p{'message_error'} = qq{<span class="b">$w{'w_error_case_hospitalization_end_date_invalid'}</span> $w{'w_error_date_format'}};
 		}
 	} elsif ($p{"form_case_hospitalization_start_date"} ne '' and $p{"form_case_hospitalization_stop_date"} ne '') {
 		if (&rc::io::fast(qq{SELECT DATEDIFF("$p{'form_case_hospitalization_stop_date'}","$p{'form_case_hospitalization_start_date'}");}) < 1) {
-			$p{'message_error'} = qq{<span class="b">This case cannot be saved because the hospitalization end date is earlier than the start date.</span> Please provide a valid start and end date in the format of YYYY-MM-DD and try again.};
+			$p{'message_error'} = qq{<span class="b">$w{'w_error_case_hospitalization_start_end_date_invalid'}</span> $w{'w_error_date_format'}};
 		}
 	}
 }
@@ -979,21 +1032,21 @@ sub check_antibiotic_input() {
 	if ($antibiotic_job_type = "add") {
 		$p{"case_id"} = &rc::io::fast(qq{SELECT entry FROM rc_cases WHERE entry="$p{"case_id"}" LIMIT 1});
 		if ($p{"case_id"} eq '') {
-			$p{'message_error'} = qq{<span class="b">This antibiotic treatment cannot be saved.</span> Please close this window and try again.};
+			$p{'message_error'} = $w{'w_error_information_cant_be_saved'};
 		}
 	} elsif ($antibiotic_job_type = "edit") {
 		$p{"abx_id"} = &rc::io::fast(qq{SELECT entry FROM rc_antibiotics WHERE entry="$p{"abx_id"}" LIMIT 1});
 		if ($p{"abx_id"} eq '') {
-			$p{'message_error'} = qq{<span class="b">This antibiotic treatment cannot be saved.</span> Please close this window and try again.};
+			$p{'message_error'} = $w{'w_error_information_cant_be_saved'};
 		}
 	}
 	if ($p{'message_error'} eq '') {
 		if (&rc::io::is_date_valid($p{"form_abx_date_start"}) eq '') {
-			$p{'message_error'} = qq{<span class="b">This antibiotic treatment cannot be saved because the start date appears to be invalid.</span> Please provide a valid start date in the format of YYYY-MM-DD and try again.};
+			$p{'message_error'} = qq{<span class="b">$w{'w_error_case_antibiotic_start_invalid'}</span> $w{'w_error_date_format'}};
 		} elsif ($p{"form_abx_date_stopped"} ne '' and &rc::io::is_date_valid($p{"form_abx_date_stopped"}) eq '') {
-			$p{'message_error'} = qq{<span class="b">This antibiotic treatment cannot be saved because the cancellation (premature stop) date appears to be invalid.</span> Please provide a valid premature stop date in the format of YYYY-MM-DD and try again.};
+			$p{'message_error'} = qq{<span class="b">$w{'w_error_case_antibiotic_stop_invalid'}</span> $w{'w_error_date_format'}};
 		} elsif ($p{"form_abx_date_stopped"} ne '' and &rc::io::fast(qq{SELECT DATEDIFF('$p{"form_abx_date_stopped"}', '$p{"form_abx_date_start"}')}) < 0) {
-			$p{'message_error'} = qq{<span class="b">This antibiotic treatment cannot be saved because the cancellation (premature stop) date occurs before the start date.</span> Please provide a valid premature stop date and try again.};
+			$p{'message_error'} = qq{<span class="b">${'w_error_case_antibiotic_start_stop_invalid'}</span> $w{'w_error_date_format'}};
 		}
 	}
 }
@@ -1002,22 +1055,22 @@ sub check_catheter_input() {
 	if ($catheter_job_type eq "add") {
 		$p{"patient_id"} = &rc::io::fast(qq{SELECT entry FROM rc_patients WHERE entry="$p{"patient_id"}" LIMIT 1});
 		if ($p{"patient_id"} eq '') {
-			$p{'message_error'} = qq{<span class="b">This catheter information cannot be saved.</span> Please close this window and try again.};
+			$p{'message_error'} = $w{'w_error_information_cant_be_saved'};
 		}
 	} elsif ($catheter_job_type eq "edit") {
 		($p{"catheter_id"}, $p{"patient_id"}) = &rc::io::query(qq{SELECT entry, patient_id FROM rc_catheters WHERE entry="$p{"catheter_id"}" LIMIT 1});
 		if ($p{"catheter_id"} eq '') {
-			$p{'message_error'} = qq{<span class="b">This catheter information cannot be saved.</span> Please close this window and try again.};
+			$p{'message_error'} = $w{'w_error_information_cant_be_saved'};
 		}
 	}
     if ($p{'message_error'} eq '') {
     	if (&rc::io::is_date_valid($p{"form_catheter_insertion_date"}) eq '') {
-			$p{'message_error'} = qq{<span class="b">This catheter information cannot be saved because the insertion date appears to be invalid.</span> Please provide a valid insertion date in the format of YYYY-MM-DD and try again.};
+			$p{'message_error'} = qq{<span class="b">$w{'w_error_case_catheter_start_invalid'}</span> $w{'w_error_date_format'}};
     	} elsif ($p{"form_catheter_removal_date"} ne '') {
 			if (&rc::io::is_date_valid($p{"form_catheter_removal_date"}) eq '') {
-				$p{'message_error'} = qq{<span class="b">This catheter information cannot be saved because the removal date appears to be invalid.</span> Please provide a valid removal date in the format of YYYY-MM-DD and try again.};
+				$p{'message_error'} = qq{<span class="b">$w{'w_error_case_catheter_stop_invalid'}</span> $w{'w_error_date_format'}};
 			} elsif (&rc::io::fast(qq{SELECT DATEDIFF("$p{'form_catheter_removal_date'}","$p{'form_catheter_insertion_date'}");}) < 1) {
-				$p{'message_error'} = qq{<span class="b">This catheter information cannot be saved because the removal date is earlier than the insertion date.</span> Please provide a valid insertion and removal date in the format of YYYY-MM-DD and try again.};
+				$p{'message_error'} = qq{<span class="b">$w{'w_error_case_catheter_start_stop_invalid'}</span> $w{'w_error_date_format'}};
 			}
 		}
 	}
@@ -1027,22 +1080,22 @@ sub check_dialysis_input() {
 	if ($dialysis_job_type eq "add") {
 		$p{"patient_id"} = &rc::io::fast(qq{SELECT entry FROM rc_patients WHERE entry="$p{"patient_id"}" LIMIT 1});
 		if ($p{"patient_id"} eq '') {
-			$p{'message_error'} = qq{<span class="b">This dialysis information cannot be saved.</span> Please close this window and try again.};
+			$p{'message_error'} = $w{'w_error_information_cant_be_saved'};
 		}
 	} elsif ($dialysis_job_type eq "edit") {
 		($p{"dialysis_id"}, $p{"patient_id"}) = &rc::io::query(qq{SELECT entry, patient_id FROM rc_dialysis WHERE entry="$p{"dialysis_id"}" LIMIT 1});
 		if ($p{"dialysis_id"} eq '') {
-			$p{'message_error'} = qq{<span class="b">This dialysis information cannot be saved.</span> Please close this window and try again.};
+			$p{'message_error'} = $w{'w_error_information_cant_be_saved'};
 		}
 	}
     if ($p{'message_error'} eq '') {
     	if (&rc::io::is_date_valid($p{"form_dialysis_start_date"}) eq '') {
-			$p{'message_error'} = qq{<span class="b">This dialysis information cannot be saved because the start date appears to be invalid.</span> Please provide a valid start date in the format of YYYY-MM-DD and try again.};
+			$p{'message_error'} = qq{<span class="b">$w{'w_error_case_dialysis_start_invalid'}</span> $w{'w_error_date_format'}};
     	} elsif ($p{"form_dialysis_stop_date"} ne '') {
 			if (&rc::io::is_date_valid($p{"form_dialysis_stop_date"}) eq '') {
-				$p{'message_error'} = qq{<span class="b">This dialysis information cannot be saved because the stop date appears to be invalid.</span> Please provide a valid stop date in the format of YYYY-MM-DD and try again.};
+				$p{'message_error'} = qq{<span class="b">$w{'w_error_case_dialysis_stop_invalid'}</span> $w{'w_error_date_format'}};
 			} elsif (&rc::io::fast(qq{SELECT DATEDIFF("$p{'form_dialysis_stop_date'}","$p{'form_dialysis_start_date'}");}) < 1) {
-				$p{'message_error'} = qq{<span class="b">This dialysis information cannot be saved because the stop date is earlier than the start date.</span> Please provide a valid start and stop date in the format of YYYY-MM-DD and try again.};
+				$p{'message_error'} = qq{<span class="b">$w{'w_error_case_dialysis_start_stop_invalid'}</span> $w{'w_error_date_format'}};
 			}
 		}
 	}
@@ -1052,19 +1105,19 @@ sub check_lab_input() {
 	if ($lab_job_type eq "add") {
 		($p{"case_id"}, $p{"patient_id"}) = &rc::io::query(qq{SELECT entry, patient FROM rc_cases WHERE entry="$p{"case_id"}" LIMIT 1});
 		if ($p{"case_id"} eq '') {
-			$p{'message_error'} = qq{<span class="b">This culture cannot be saved.</span> Please close this window and try again.};
+			$p{'message_error'} = $w{'w_error_information_cant_be_saved'};
 		}
 	} elsif ($lab_job_type eq "edit") {
 		($p{"lab_id"}, $p{"case_id"}) = &rc::io::query(qq{SELECT entry, case_id FROM rc_labs WHERE entry="$p{"lab_id"}" LIMIT 1});
 		if ($p{"lab_id"} eq '') {
-			$p{'message_error'} = qq{<span class="b">This culture result cannot be saved.</span> Please close this window and try again.};
+			$p{'message_error'} = $w{'w_error_information_cant_be_saved'};
 		}
 	}
     if ($p{'message_error'} eq '') {
     	if ($p{"form_labs_ordered"} eq '') {
-			$p{'message_error'} = qq{<span class="b">This culture result cannot be saved because no order date information is provided.</span> Please provide a valid order date in the format of YYYY-MM-DD and try again.};
+			$p{'message_error'} = $w{'w_error_information_cant_be_saved'};
     	} elsif (&rc::io::is_date_valid($p{"form_labs_ordered"}) eq '') {
-			$p{'message_error'} = qq{<span class="b">This culture result cannot be saved because the order date appears to be invalid.</span> Please provide a valid order date in the format of YYYY-MM-DD and try again.};
+			$p{'message_error'} = $w{'w_error_information_cant_be_saved'};
     	}
     }
 }
@@ -1081,9 +1134,11 @@ if ($output_main ne '') {
 	$output_javascript = qq{ajax('div_main','send_to_main');};
 } else {
 	if ($output_page eq '') {
-		$p{"patient_id"} = '';
 		$p{'do'} = '';
 		my $state = &rc::io::fast(qq{SELECT value FROM rc_state WHERE uid="$sid[2]" AND param="tab" LIMIT 1});
+		unless ($state eq "view_cases") {
+			$p{"patient_id"} = '';
+		}
 		if ($state eq "view_active_cases") {
 			$output_page = &rc::io::view_active_cases(\%p);
 		} elsif ($state eq "view_cases") {
