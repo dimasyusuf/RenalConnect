@@ -394,7 +394,7 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 	if ($p{'message_error'} eq 1) {
 		$p{'message_error'} = $w{'w_error_no_home_center'};
 	} elsif ($p{'message_error'} eq 2) {
-		$p{'message_error'} = $w{'w_error_cant_sign_off'};
+		$p{'message_error'} = $w{'w_error_cant_sign_off'} . $p{'message_error'};
 	} else {
 		$p{'message_error'} = '';
 				
@@ -413,6 +413,8 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 			my $first_hd_date = &rc::io::fast(qq{SELECT first_hd_date FROM rc_lists WHERE entry="$list_id" LIMIT 1});
 			my $created_date = &rc::io::fast(qq{SELECT created FROM rc_lists WHERE entry="$list_id" LIMIT 1});
 			my $tn_initial_assessment_date = &rc::io::fast(qq{SELECT tn_initial_assessment_date FROM rc_lists WHERE entry="$list_id" LIMIT 1});
+			my $modality_at_six_months = &rc::io::fast(qq{SELECT modality_at_six_months FROM rc_lists WHERE entry="$list_id" LIMIT 1});
+			my $modality_at_twelve_months = &rc::io::fast(qq{SELECT modality_at_twelve_months FROM rc_lists WHERE entry="$list_id" LIMIT 1});
 			my $date_modality_6_months;
 			my $date_modality_12_months;
 
@@ -437,13 +439,13 @@ if ($p{'do'} eq "view_dismissed_alerts" and $ok) {
 					VALUES ("230","$user","$patient_id", "$list_id", "$date_follow_up")});
 				}
 			}
-			if ($date_modality_6_months ne '' and $date_modality_6_months ne '0000-00-00') {
+			if ($date_modality_6_months ne '' and $date_modality_6_months ne '0000-00-00' and ($modality_at_six_months eq '' or $modality_at_six_months eq 'NULL')) {
 				foreach my $user (@users) {
 					&rc::io::input(qq{INSERT INTO rc_alerts (alert_type, uid, pid, sid, show_after) 
 					VALUES ("240","$user","$patient_id", "$list_id", "$date_modality_6_months")});
 				}
 			}
-			if ($date_modality_12_months ne '' and $date_modality_12_months ne '0000-00-00') {
+			if ($date_modality_12_months ne '' and $date_modality_12_months ne '0000-00-00' and ($modality_at_twelve_months eq '' or $modality_at_twelve_months eq 'NULL')) {
 				foreach my $user (@users) {
 					&rc::io::input(qq{INSERT INTO rc_alerts (alert_type, uid, pid, sid, show_after) 
 					VALUES ("250","$user","$patient_id", "$list_id", "$date_modality_12_months")});

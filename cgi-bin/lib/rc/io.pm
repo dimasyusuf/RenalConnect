@@ -7,8 +7,8 @@ use strict;
 # =============================================
 
 my %local_settings = (
-	"path_htdocs" => '', #IF THE WEBSITE IS INSTALLED IN ROOT, SHOULD BE ''
-	"path_cgibin" => "cgi-bin/", #THE WEBSITE'S CGI-BIN MUST BE INSTALLED IN ROOT, I.E. /cgi-bin/index.pl MUST BE ACCESSIBLE
+	"path_htdocs" => "", #IF THE WEBSITE IS INSTALLED IN ROOT, SHOULD BE ''
+	"path_cgibin" => "/cgi-bin/", #THE WEBSITE'S CGI-BIN MUST BE INSTALLED IN ROOT, I.E. /cgi-bin/index.pl MUST BE ACCESSIBLE
 	"encrypt_key" => "", #A 16-TO-256 STRING RANDOM KEY, ALPHANUMERIC, CANNOT BE CHANGED
 	"dbinfo_host" => "", #DATABASE HOST NAME OR IP ADDRESS, EXAMPLE "localhost"
 	"dbinfo_user" => "", #DATABASE USER NAME, EXAMPLE "root"
@@ -17,11 +17,11 @@ my %local_settings = (
 	"http_domain" => "", #THE DOMAIN OR IP ADDRESS WHERE IT'S INSTALLED, EXAMPLE "renalconnect.com"
 	"email_sender_key" => "",  #A 16-TO-256 STRING RANDOM KEY, ALPHANUMERIC, FOR YOUR send.php
 	"email_sender_from" => "", #THE EMAIL ADDRESS OF YOUR RENALCONNECT, EXAMPLE "do.not.reply@renalconnect.com"
-	"email_sender_script" => "", #ABSOLUTE URL PATH TO send.php, EXAMPLE "http://www.renalconnectmail.com/send.php"
+	"email_sender_script" => "/send.php", #ABSOLUTE URL PATH TO send.php, EXAMPLE "http://www.renalconnectmail.com/send.php"
 	"email_support_to" => "", #EMAIL ADDRESS OF TECHNICAL SUPPORT PERSON
 	"default_hospital" => "", #THE DEFAULT HOSPITAL IN YOUR GROUP, I.E. "St. Michael's Hospital"
 	"ajax_debug" => "off", #DEVELOPMENT DEBUG TOOL, BY DEFAULT SHOULD BE off
-	"end_of_settings" => '');
+	"end_of_settings" => "");
 
 #THE HOSPITALS IN YOUR GROUP, I.E. "St. Michael's Hospital"
 
@@ -105,10 +105,10 @@ sub get_db() {
 	return $dbh;
 }
 sub dblog() {
-	my $query = shift;
-	open(LOG, ">>db.txt");
-	print LOG $query . "\n";
-	close(LOG);
+#	my $query = shift;
+#	open(LOG, ">>db.txt");
+#	print LOG $query . "\n";
+#	close(LOG);
 }
 my $dbh = &get_db();
 sub fast() {
@@ -774,8 +774,8 @@ my %lang_en = (
 	'w_about_renalconnect' => 'RenalConnect is a clinical management tool developed in British Columbia to improve quality of care and patient outcome in dialysis.',
 	'w_alert_cannot_add_patient' => qq{<span class="b">This patient's information cannot be added.</span> Please ensure that all required fields are completed correctly and try again.},
 	qq{w_alert_code_230} => qq{Please follow-up on this new patient.},
-	qq{w_alert_code_240} => qq{Please follow-up on this new patient to discuss treatment modality at 6 months.},
-	qq{w_alert_code_250} => qq{Please follow-up on this new patient to discuss treatment modality at 12 months.},
+	qq{w_alert_code_240} => qq{Please follow-up on this new patient to document treatment modality at 6 months.},
+	qq{w_alert_code_250} => qq{Please follow-up on this new patient to document treatment modality at 12 months.},
 	'w_alert_code_10' => "Please reconsider the Vancomycin dose for this patient, it is below the recommended minimum of 20 mg/kg.",
 	'w_alert_code_110' => "Preliminary culture results not arrived.",
 	'w_alert_code_120' => "Final culture results not arrived.",
@@ -2643,7 +2643,7 @@ sub view_active_lists() {
 		$active_lists_home_centres_filter_mysql = qq{AND rc_lists.home_centre="$saved_active_lists_home_centres_filter"};
 	}
 	if ($saved_active_lists_patient_filter eq "patients with CVC and no AVF") {
-		$active_lists_patient_filter_mysql = qq{AND (rc_lists.vascular_access_at_hd_start LIKE "CVC") AND (rc_lists.tn_avf_use_date IS NULL)};
+		$active_lists_patient_filter_mysql = qq{AND (rc_lists.vascular_access_at_hd_start LIKE "\%CVC\%") AND (rc_lists.tn_avf_use_date IS NULL OR rc_lists.tn_avf_use_date = '0000-00-00')};
 	} elsif ($saved_active_lists_patient_filter eq "patients without ACP completion date") {
 		$active_lists_patient_filter_mysql = qq{AND rc_lists.most_completed_date IS NULL};
 	} elsif ($saved_active_lists_patient_filter =~ /\d/) {
@@ -4295,13 +4295,10 @@ sub check_if_list_complete_on_discharge() {
 		"home_centre",
 		"tn_initial_assessment_date",
 		"prior_status",
-		"first_hd_date",
-		"vascular_access_at_hd_start",
 		"tn_chosen_modality",
 		"candidate_for_home",
 		"interested_in_transplant",
 		"acp_introduced",
-		"most_completed_date",
 		"tn_discharge_date");
 	my $error = 0;
 	if ($p{"form_list_completed"} eq "Yes") {
@@ -7083,7 +7080,7 @@ sub generate_alerts_30_yeast_remove_pd_catheter_asap() {
 	my $uid = $sid[2];
 	my @cases = &query(qq{SELECT entry FROM rc_cases WHERE closed="0"});
 	foreach my $case (@cases) {
-		my ($cid, $pid) = &query(qq{SELECT DISTINCTROW rc_cases.entry, rc_cases.patient FROM rc_labs, rc_cases WHERE rc_cases.entry="$case" AND rc_cases.entry=rc_labs.case_id AND (rc_labs.pathogen_1 LIKE "%Yeast%" OR rc_labs.pathogen_2 LIKE "%Yeast%" OR rc_labs.pathogen_3 LIKE "%Yeast%" OR rc_labs.pathogen_4 LIKE "%Yeast%") LIMIT 1});
+		my ($cid, $pid) = &query(qq{SELECT DISTINCTROW rc_cases.entry, rc_cases.patient FROM rc_labs, rc_cases WHERE rc_cases.entry="$case" AND rc_cases.entry=rc_labs.case_id AND (rc_labs.pathogen_1 LIKE "\%Yeast\%" OR rc_labs.pathogen_2 LIKE "\%Yeast\%" OR rc_labs.pathogen_3 LIKE "\%Yeast\%" OR rc_labs.pathogen_4 LIKE "\%Yeast\%") LIMIT 1});
 		if ($cid ne '') {
 			if (&fast(qq{SELECT entry FROM rc_alerts WHERE alert_type="30" AND cid="$cid"}) eq '') {
 				&input(qq{INSERT INTO rc_alerts (alert_type, pid, cid) VALUES ("30", "$pid", "$cid")});
@@ -7264,7 +7261,7 @@ sub report_list_percentage_hd_with_va() {
 		$limit_to_months_ago = qq{ AND tn_initial_assessment_date < DATE_SUB(CURDATE(), INTERVAL 12 MONTH)};
 	}
 	my @centres = &query(qq{SELECT DISTINCTROW home_centre FROM rc_lists WHERE (tn_initial_assessment_date IS NOT NULL) AND (tn_initial_assessment_date >= "$start") AND (tn_initial_assessment_date <= "$end") $mysql_filter $filter $limit_to_months_ago});
-	my @data = &querymr(qq{SELECT home_centre, $look_in, vascular_access_at_hd_start FROM rc_lists WHERE (tn_initial_assessment_date IS NOT NULL) AND (tn_initial_assessment_date >= "$start") AND (tn_initial_assessment_date <= "$end") $mysql_filter $filter $limit_to_months_ago});
+	my @data = &querymr(qq{SELECT home_centre, $look_in, vascular_access_at_hd_start FROM rc_lists WHERE (((status_at_initial_meeting = "Hemodialysis") OR ((modality_at_six_months LIKE "\%hemodialysis\%" OR modality_at_six_months IS NULL OR modality_at_six_months = "") AND (modality_at_twelve_months LIKE "\%hemodialysis\%" OR modality_at_twelve_months IS NULL OR modality_at_twelve_months = ""))) AND (pd_start_date IS NULL OR pd_start_date = "0000-00-00" OR pd_start_date = "")) AND (tn_initial_assessment_date IS NOT NULL) AND (tn_initial_assessment_date >= "$start") AND (tn_initial_assessment_date <= "$end") $mysql_filter $filter $limit_to_months_ago});
 	@centres = ("All centres", @centres);
 	my $centre_count = @centres;
 	my $column_width = int(100 / $centre_count);
@@ -7614,9 +7611,9 @@ sub view_list_reports() {
 	my $pct_chose_hhd_six_months = &report_list_percentage($start, $end, $filter, "modality_at_six_months", "Home hemodialysis", qq{AND (recovered_from_dialysis_dependance = "No" OR recovered_from_dialysis_dependance IS NULL)}, $w{'Proportion of patients who are on HHD 6 months after TN intervention'}, "high");
 	my $pct_chose_hhd_twelve_months = &report_list_percentage($start, $end, $filter, "modality_at_twelve_months", "Home hemodialysis", qq{AND (recovered_from_dialysis_dependance = "No" OR recovered_from_dialysis_dependance IS NULL)}, $w{'Proportion of patients who are on HHD 12 months after TN intervention'}, "high");
 
-	my $hd_to_va_referral = &report_list_time_interval($start, $end, $filter, "first_hd_date", "cvc_va_referral_date", qq{AND tn_chosen_modality LIKE "%hemodialysis" AND (recovered_from_dialysis_dependance = "No" OR recovered_from_dialysis_dependance IS NULL)}, $w{'From HD start to VA referral for patients who chose HD'});
-	my $hd_to_va_creation = &report_list_time_interval($start, $end, $filter, "first_hd_date", "tn_avf_creation_date", qq{AND tn_chosen_modality LIKE "%hemodialysis" AND (recovered_from_dialysis_dependance = "No" OR recovered_from_dialysis_dependance IS NULL)}, $w{'From HD start to VA creation for patients who chose HD'});
-	my $hd_to_va_use = &report_list_time_interval($start, $end, $filter, "first_hd_date", "tn_avf_use_date", qq{AND tn_chosen_modality LIKE "%hemodialysis" AND (recovered_from_dialysis_dependance = "No" OR recovered_from_dialysis_dependance IS NULL)}, $w{'From HD start to VA use for patients who chose HD'});
+	my $hd_to_va_referral = &report_list_time_interval($start, $end, $filter, "first_hd_date", "cvc_va_referral_date", qq{AND tn_chosen_modality LIKE "\%hemodialysis\%" AND (recovered_from_dialysis_dependance = "No" OR recovered_from_dialysis_dependance IS NULL)}, $w{'From HD start to VA referral for patients who chose HD'});
+	my $hd_to_va_creation = &report_list_time_interval($start, $end, $filter, "first_hd_date", "tn_avf_creation_date", qq{AND tn_chosen_modality LIKE "\%hemodialysis\%" AND (recovered_from_dialysis_dependance = "No" OR recovered_from_dialysis_dependance IS NULL)}, $w{'From HD start to VA creation for patients who chose HD'});
+	my $hd_to_va_use = &report_list_time_interval($start, $end, $filter, "first_hd_date", "tn_avf_use_date", qq{AND tn_chosen_modality LIKE "\%hemodialysis\%" AND (recovered_from_dialysis_dependance = "No" OR recovered_from_dialysis_dependance IS NULL)}, $w{'From HD start to VA use for patients who chose HD'});
 	my $pct_chose_hd_with_proper_va_six_months = &report_list_percentage_hd_with_va($start, $end, $filter, "modality_at_six_months", qq{}, qq{AND (recovered_from_dialysis_dependance = "No" OR recovered_from_dialysis_dependance IS NULL)}, $w{'Proportion of patients who are on HD with VA (AVF or AVG) 6 months after TN intervention'}, "high");
 	my $pct_chose_hd_with_proper_va_twelve_months = &report_list_percentage_hd_with_va($start, $end, $filter, "modality_at_twelve_months", qq{}, qq{AND (recovered_from_dialysis_dependance = "No" OR recovered_from_dialysis_dependance IS NULL)}, $w{'Proportion of patients who are on HD with VA (AVF or AVG) 12 months after TN intervention'}, "high");
 
