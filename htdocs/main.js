@@ -50,16 +50,19 @@ manage_list = function() {
 	
 	var six = document.getElementById("form_list_modality_at_six_months_enable").innerHTML;
 	var twelve = document.getElementById("form_list_modality_at_twelve_months_enable").innerHTML;
-	if (six == 1) {
-		document.getElementById("form_list_modality_at_six_months").disabled = false;
-	} else {
-		document.getElementById("form_list_modality_at_six_months").disabled = true;
-	}
-	if (twelve == 1) {
-		document.getElementById("form_list_modality_at_twelve_months").disabled = false;
-	} else {
-		document.getElementById("form_list_modality_at_twelve_months").disabled = true;
-	}
+	
+	// THE RESTRICTIONS BELOW ARE DISABLED AS PER USER FEEDBACK
+	// AUGUST 10TH, 2015
+	//	if (six == 1) {
+	//		document.getElementById("form_list_modality_at_six_months").disabled = false;
+	//	} else {
+	//		document.getElementById("form_list_modality_at_six_months").disabled = true;
+	//	}
+	//	if (twelve == 1) {
+	//		document.getElementById("form_list_modality_at_twelve_months").disabled = false;
+	//	} else {
+	//		document.getElementById("form_list_modality_at_twelve_months").disabled = true;
+	//	}
 
 	// HIDE EVERYTHING FIRST
 
